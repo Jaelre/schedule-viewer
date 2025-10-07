@@ -307,8 +307,8 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
             name: format!("{} {}", fname, lname).trim().to_string(),
         });
 
-        // Use alias as the shift code
-        let code = shift.shift.alias.clone();
+        // Extract shift code from alias (remove time portion)
+        let code = extract_shift_code(&shift.shift.alias);
         if !code.is_empty() {
             shift_codes.insert(code);
         }
@@ -343,7 +343,7 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
             // Extract day from start_time (format: "YYYY-MM-DD HH:MM:SS")
             if let Some(day) = extract_day_from_datetime(&shift.start_time) {
                 if day > 0 && day <= days_in_month {
-                    let code = shift.shift.alias;
+                    let code = extract_shift_code(&shift.shift.alias);
                     // Append to existing shifts for this day
                     if let Some(ref mut shift_codes) = rows[person_idx][day - 1] {
                         shift_codes.push(code);
@@ -395,6 +395,18 @@ fn extract_day_from_datetime(datetime: &str) -> Option<usize> {
     } else {
         None
     }
+}
+
+fn extract_shift_code(alias: &str) -> String {
+    // Extract shift code from alias like "RATM 8:00AM - 2:00PM" -> "RATM"
+    // or "FT 8:30am - 6:30" -> "FT"
+    // Just take everything before the first space or digit
+    alias
+        .split_whitespace()
+        .next()
+        .unwrap_or(alias)
+        .trim()
+        .to_string()
 }
 
 fn handle_options() -> Result<Response> {
