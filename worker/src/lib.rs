@@ -1,8 +1,12 @@
-use worker::*;
+use futures::future::{select, Either};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
+use worker::*;
 
 mod utils;
+
+const UPSTREAM_TIMEOUT_MESSAGE: &str = "Upstream request timed out";
 
 // Environment variables
 struct Config {
@@ -131,13 +135,25 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     // Fetch from upstream API with timeout and retry
     let upstream_data = match fetch_with_retry(&upstream_url, config.api_timeout_ms, 2).await {
         Ok(data) => data,
-        Err(e) => return error_response("UPSTREAM_ERROR", &e.to_string(), 502),
+        Err(e) => {
+            let message = e.to_string();
+            if message == UPSTREAM_TIMEOUT_MESSAGE {
+                return error_response("UPSTREAM_TIMEOUT", &message, 504);
+            }
+            return error_response("UPSTREAM_ERROR", &message, 502);
+        }
     };
 
     // Parse upstream response
     let upstream: UpstreamResponse = match serde_json::from_str(&upstream_data) {
         Ok(data) => data,
-        Err(e) => return error_response("PARSE_ERROR", &format!("Failed to parse upstream response: {}", e), 500),
+        Err(e) => {
+            return error_response(
+                "PARSE_ERROR",
+                &format!("Failed to parse upstream response: {}", e),
+                500,
+            )
+        }
     };
 
     // Transform to MonthShifts format
@@ -147,7 +163,10 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     let json = serde_json::to_string(&month_shifts)?;
     let mut headers = Headers::new();
     headers.set("Content-Type", "application/json")?;
-    headers.set("Cache-Control", &format!("public, max-age={}", config.cache_ttl_seconds))?;
+    headers.set(
+        "Cache-Control",
+        &format!("public, max-age={}", config.cache_ttl_seconds),
+    )?;
     headers.set("Access-Control-Allow-Origin", "*")?;
     headers.set("Vary", "Origin")?;
 
@@ -158,8 +177,16 @@ fn get_config(ctx: &RouteContext<()>) -> Result<Config> {
     Ok(Config {
         api_base_url: ctx.var("API_BASE_URL")?.to_string(),
         api_token: ctx.secret("API_TOKEN")?.to_string(),
-        api_timeout_ms: ctx.var("API_TIMEOUT_MS")?.to_string().parse().unwrap_or(8000),
-        cache_ttl_seconds: ctx.var("CACHE_TTL_SECONDS")?.to_string().parse().unwrap_or(300),
+        api_timeout_ms: ctx
+            .var("API_TIMEOUT_MS")?
+            .to_string()
+            .parse()
+            .unwrap_or(8000),
+        cache_ttl_seconds: ctx
+            .var("CACHE_TTL_SECONDS")?
+            .to_string()
+            .parse()
+            .unwrap_or(300),
     })
 }
 
@@ -179,8 +206,12 @@ fn is_valid_ym(ym: &str) -> bool {
 
 fn get_month_bounds(ym: &str) -> Result<(String, String)> {
     let parts: Vec<&str> = ym.split('-').collect();
-    let year: i32 = parts[0].parse().map_err(|_| Error::RustError("Invalid year".to_string()))?;
-    let month: u32 = parts[1].parse().map_err(|_| Error::RustError("Invalid month".to_string()))?;
+    let year: i32 = parts[0]
+        .parse()
+        .map_err(|_| Error::RustError("Invalid year".to_string()))?;
+    let month: u32 = parts[1]
+        .parse()
+        .map_err(|_| Error::RustError("Invalid month".to_string()))?;
 
     // Calculate days in month
     let days_in_month = if month == 12 {
@@ -203,30 +234,53 @@ fn get_month_bounds(ym: &str) -> Result<(String, String)> {
 
 async fn fetch_with_retry(url: &str, timeout_ms: u64, max_retries: u32) -> Result<String> {
     let mut retries = 0;
+    let timeout_duration = Duration::from_millis(timeout_ms);
 
     loop {
+        let controller = AbortController::new()?;
+        let signal = controller.signal();
+
         let mut request_init = RequestInit::new();
         request_init.with_method(Method::Get);
+        request_init.with_signal(Some(signal));
 
         let request = Request::new_with_init(url, &request_init)?;
 
-        match Fetch::Request(request).send().await {
-            Ok(mut response) => {
-                if response.status_code() >= 200 && response.status_code() < 300 {
-                    return response.text().await;
-                } else if response.status_code() >= 500 && retries < max_retries {
-                    // Retry on 5xx errors
+        let timeout_future = Delay::from(timeout_duration);
+        let fetch_future = Fetch::Request(request).send();
+
+        match select(timeout_future, fetch_future).await {
+            Either::Left((_, mut pending_fetch)) => {
+                controller.abort();
+                let _ = pending_fetch.await;
+
+                if retries < max_retries {
                     retries += 1;
                     continue;
-                } else {
-                    return Err(Error::RustError(format!("Upstream returned status {}", response.status_code())));
                 }
+
+                return Err(Error::RustError(UPSTREAM_TIMEOUT_MESSAGE.to_string()));
             }
-            Err(e) if retries < max_retries => {
-                retries += 1;
-                continue;
-            }
-            Err(e) => return Err(e),
+            Either::Right((fetch_result, _)) => match fetch_result {
+                Ok(mut response) => {
+                    if response.status_code() >= 200 && response.status_code() < 300 {
+                        return response.text().await;
+                    } else if response.status_code() >= 500 && retries < max_retries {
+                        retries += 1;
+                        continue;
+                    } else {
+                        return Err(Error::RustError(format!(
+                            "Upstream returned status {}",
+                            response.status_code()
+                        )));
+                    }
+                }
+                Err(e) if retries < max_retries => {
+                    retries += 1;
+                    continue;
+                }
+                Err(e) => return Err(e),
+            },
         }
     }
 }
@@ -244,7 +298,11 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
         });
 
         // Use abbreviation if available, otherwise use full name
-        let code = shift.shift.abbreviation.clone().unwrap_or_else(|| shift.shift.name.clone());
+        let code = shift
+            .shift
+            .abbreviation
+            .clone()
+            .unwrap_or_else(|| shift.shift.name.clone());
         if !code.is_empty() {
             shift_codes.insert(code);
         }
