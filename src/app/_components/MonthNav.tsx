@@ -1,5 +1,6 @@
 'use client'
 
+import { ChangeEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getPreviousYM, getNextYM, formatMonthDisplay } from '@/lib/date'
 
@@ -25,6 +26,13 @@ export function MonthNav({ currentYM }: MonthNavProps) {
     navigateToMonth(getNextYM(currentYM))
   }
 
+  const handleMonthChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value
+    if (value) {
+      navigateToMonth(value)
+    }
+  }
+
   return (
     <div className="flex items-center gap-4">
       <button
@@ -35,8 +43,20 @@ export function MonthNav({ currentYM }: MonthNavProps) {
         ← Precedente
       </button>
 
-      <div className="text-xl font-semibold min-w-[200px] text-center">
-        {formatMonthDisplay(currentYM)}
+      <div className="flex flex-col items-center gap-1 min-w-[200px]">
+        <div className="text-xl font-semibold text-center">
+          {formatMonthDisplay(currentYM)}
+        </div>
+        <label className="sr-only" htmlFor="month-picker">
+          Seleziona mese
+        </label>
+        <input
+          id="month-picker"
+          type="month"
+          value={currentYM}
+          onChange={handleMonthChange}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
       </div>
 
       <button
