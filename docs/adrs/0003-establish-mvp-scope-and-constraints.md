@@ -1,7 +1,8 @@
 # ADR 0003: Establish MVP Scope and Constraints
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2025-02-14
+- Superseded by: ADR 0004 - Refresh MVP Scope and Constraints
 
 ## Context
 - Stakeholders defined a focused V1 scope for a monthly shift viewer that favours read-only consumption, deterministic behaviour, and quick delivery.
