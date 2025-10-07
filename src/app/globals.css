@@ -18,14 +18,14 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  @apply bg-card;
+  @apply bg-white;
 }
 
 .grid-first-col {
   position: sticky;
   left: 0;
   z-index: 10;
-  @apply bg-card;
+  @apply bg-white;
 }
 
 .grid-header.grid-first-col {
