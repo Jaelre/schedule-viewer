@@ -95,6 +95,13 @@ schedule-viewer/
    npm install -g wrangler
    ```
 
+6. **Set up Worker secrets** (for real API)
+   ```bash
+   cd worker
+   cp .dev.vars.example .dev.vars
+   # Edit .dev.vars and add your MetricAid API token
+   ```
+
 ### Running Locally
 
 #### Frontend with Mock Data

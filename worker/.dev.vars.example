@@ -1,0 +1,4 @@
+# Local development secrets for Cloudflare Worker
+# Copy this file to .dev.vars and add your actual API token
+
+API_TOKEN=your_metricaid_api_token_here
