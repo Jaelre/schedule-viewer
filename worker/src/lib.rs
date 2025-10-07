@@ -64,7 +64,7 @@ struct ShiftDetails {
 
 #[derive(Deserialize)]
 struct UserDetails {
-    id: u64,
+    id: Option<u64>,
     first_name: String,
     last_name: String,
 }
@@ -290,7 +290,9 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
     let mut shift_codes: HashSet<String> = HashSet::new();
 
     for shift in &shifts {
-        let user_id = shift.user.id.to_string();
+        let user_id = shift.user.id
+            .map(|id| id.to_string())
+            .unwrap_or_else(|| format!("{}_{}", shift.user.first_name, shift.user.last_name));
         people_map.entry(user_id.clone()).or_insert_with(|| Person {
             id: user_id.clone(),
             name: format!("{} {}", shift.user.first_name, shift.user.last_name),
@@ -326,7 +328,9 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
 
     // Fill in the matrix
     for shift in shifts {
-        let user_id = shift.user.id.to_string();
+        let user_id = shift.user.id
+            .map(|id| id.to_string())
+            .unwrap_or_else(|| format!("{}_{}", shift.user.first_name, shift.user.last_name));
         if let Some(&person_idx) = person_indices.get(&user_id) {
             // Extract day from start_time (format: "YYYY-MM-DD HH:MM:SS")
             if let Some(day) = extract_day_from_datetime(&shift.start_time) {
