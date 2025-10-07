@@ -6,16 +6,18 @@ import type { ShiftCodeMap } from '@/lib/types'
 
 interface LegendModalProps {
   codes: string[]
+  shiftNames?: Record<string, string>
   codeMap?: ShiftCodeMap
   isOpen: boolean
   onClose: () => void
 }
 
-export function LegendModal({ codes, codeMap, isOpen, onClose }: LegendModalProps) {
+export function LegendModal({ codes, shiftNames, codeMap, isOpen, onClose }: LegendModalProps) {
   const legend = useMemo(() => {
     return codes.map((code) => {
       const colors = getShiftColor(code)
-      const label = codeMap?.[code]?.label || code
+      // Use shiftNames from API first, then fallback to codeMap, then just the code
+      const label = shiftNames?.[code] || codeMap?.[code]?.label || code
 
       return {
         code,
@@ -23,7 +25,7 @@ export function LegendModal({ codes, codeMap, isOpen, onClose }: LegendModalProp
         colors,
       }
     })
-  }, [codes, codeMap])
+  }, [codes, shiftNames, codeMap])
 
   // Handle escape key
   useEffect(() => {

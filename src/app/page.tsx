@@ -81,6 +81,7 @@ function PageContent() {
             {/* Legend Modal */}
             <LegendModal
               codes={data.codes || []}
+              shiftNames={data.shiftNames}
               codeMap={shiftCodeMap}
               isOpen={isLegendOpen}
               onClose={() => setIsLegendOpen(false)}

@@ -19,6 +19,8 @@ export type MonthShifts = {
   rows: (string[] | null)[][]
   // Optional metadata (codes seen this month)
   codes?: string[]
+  // Mapping of shift codes to full shift names (e.g., "RATM" -> "RATM 8:00AM - 2:00PM")
+  shiftNames?: Record<string, string>
 }
 
 export type ShiftCodeMap = {

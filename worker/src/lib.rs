@@ -21,6 +21,8 @@ struct MonthShifts {
     people: Vec<Person>,
     rows: Vec<Vec<Option<Vec<String>>>>,
     codes: Vec<String>,
+    #[serde(rename = "shiftNames")]
+    shift_names: HashMap<String, String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -294,6 +296,7 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
     // Extract unique people
     let mut people_map: HashMap<String, Person> = HashMap::new();
     let mut shift_codes: HashSet<String> = HashSet::new();
+    let mut shift_names: HashMap<String, String> = HashMap::new();
 
     for shift in &shifts {
         let fname = shift.user.fname.as_deref().unwrap_or("Unknown");
@@ -310,7 +313,9 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
         // Extract shift code from alias (remove time portion)
         let code = extract_shift_code(&shift.shift.alias);
         if !code.is_empty() {
-            shift_codes.insert(code);
+            shift_codes.insert(code.clone());
+            // Map the abbreviation to the full alias string
+            shift_names.insert(code, shift.shift.alias.clone());
         }
     }
 
@@ -364,6 +369,7 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
         people,
         rows,
         codes,
+        shift_names,
     }
 }
 
