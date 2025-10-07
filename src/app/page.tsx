@@ -69,13 +69,14 @@ function PageContent() {
 
         {/* Success State */}
         {data && !error && (
-          <div className="space-y-4">
-            {/* Legend */}
-            <LegendCard codes={data.codes || []} codeMap={shiftCodeMap} />
-
+          <div className="space-y-6">
             {/* Grid */}
             {data.people.length > 0 ? (
-              <ScheduleGrid data={data} density={density} />
+              <>
+                <ScheduleGrid data={data} density={density} />
+                {/* Legend at bottom */}
+                <LegendCard codes={data.codes || []} codeMap={shiftCodeMap} />
+              </>
             ) : (
               <div className="bg-card border border-border rounded-lg p-12">
                 <div className="text-center text-muted-foreground">

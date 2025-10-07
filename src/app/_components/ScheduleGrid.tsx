@@ -91,7 +91,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
 
               {/* Shift Cells */}
               {dayHeaders.map((day) => {
-                const code = personRow[day - 1]
+                const codes = personRow[day - 1]
                 const isWeekendDay = isWeekend(ym, day)
                 const isHoliday = isItalianHoliday(ym, day)
 
@@ -102,21 +102,27 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                 return (
                   <div
                     key={`${person.id}-${day}`}
-                    className={`grid-cell ${bgClass} ${cellPadding} ${cellHeight} flex items-center justify-center ${textSize} font-medium border-b border-border`}
+                    className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium border-b border-border`}
                   >
-                    {code && (
-                      <div
-                        className="px-1.5 py-0.5 rounded"
-                        style={{
-                          backgroundColor: getShiftColor(code).background,
-                          color: getShiftColor(code).text,
-                        }}
-                        title={code}
-                      >
-                        {code}
+                    {codes && codes.length > 0 ? (
+                      <div className="flex flex-col gap-0.5 w-full">
+                        {codes.map((code, idx) => (
+                          <div
+                            key={`${person.id}-${day}-${idx}`}
+                            className="px-1.5 py-0.5 rounded text-center text-xs font-medium"
+                            style={{
+                              backgroundColor: getShiftColor(code).background,
+                              color: getShiftColor(code).text,
+                            }}
+                            title={code}
+                          >
+                            {code}
+                          </div>
+                        ))}
                       </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
                     )}
-                    {!code && <span className="text-muted-foreground">-</span>}
                   </div>
                 )
               })}

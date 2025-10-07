@@ -19,7 +19,7 @@ struct Config {
 struct MonthShifts {
     ym: String,
     people: Vec<Person>,
-    rows: Vec<Vec<Option<String>>>,
+    rows: Vec<Vec<Option<Vec<String>>>>,
     codes: Vec<String>,
 }
 
@@ -321,8 +321,8 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
     // Get days in month
     let days_in_month = get_days_in_month(&ym);
 
-    // Build rows matrix (people x days)
-    let mut rows: Vec<Vec<Option<String>>> = vec![vec![None; days_in_month]; people.len()];
+    // Build rows matrix (people x days) - each cell can have multiple shifts
+    let mut rows: Vec<Vec<Option<Vec<String>>>> = vec![vec![None; days_in_month]; people.len()];
 
     // Create person_id -> index mapping
     let person_indices: HashMap<String, usize> = people
@@ -331,7 +331,7 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
         .map(|(i, p)| (p.id.clone(), i))
         .collect();
 
-    // Fill in the matrix
+    // Fill in the matrix - support multiple shifts per day
     for shift in shifts {
         let fname = shift.user.fname.as_deref().unwrap_or("Unknown");
         let lname = shift.user.lname.as_deref().unwrap_or("");
@@ -344,7 +344,12 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
             if let Some(day) = extract_day_from_datetime(&shift.start_time) {
                 if day > 0 && day <= days_in_month {
                     let code = shift.shift.alias;
-                    rows[person_idx][day - 1] = Some(code);
+                    // Append to existing shifts for this day
+                    if let Some(ref mut shift_codes) = rows[person_idx][day - 1] {
+                        shift_codes.push(code);
+                    } else {
+                        rows[person_idx][day - 1] = Some(vec![code]);
+                    }
                 }
             }
         }
