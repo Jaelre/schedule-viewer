@@ -8,7 +8,7 @@ export interface DoctorNamesDict {
 const doctorNames: DoctorNamesDict = doctorNamesData
 
 /**
- * Get the real name for a doctor by their ID or partial name match
+ * Get the real name for a doctor by searching through the names dictionary
  * @param id - The doctor's ID (as string or number)
  * @param apiName - Optional name from the API to use for matching
  * @returns The doctor's real name, or the original ID/name if not found
@@ -16,25 +16,37 @@ const doctorNames: DoctorNamesDict = doctorNamesData
 export function getDoctorName(id: string | number, apiName?: string): string {
   const idStr = String(id)
 
-  // First try direct ID lookup
+  // First try direct ID or name lookup
   if (doctorNames.names[idStr]) {
     return doctorNames.names[idStr]
   }
 
-  // If API name provided, try to match by last name (case insensitive)
-  if (apiName) {
-    const apiNameLower = apiName.toLowerCase().trim()
-    const apiParts = apiNameLower.split(/\s+/)
-    const apiLastName = apiParts[apiParts.length - 1]
+  if (apiName && doctorNames.names[apiName]) {
+    return doctorNames.names[apiName]
+  }
 
-    // Search through all names for a match
+  // If API name provided, search for substring match (case insensitive)
+  if (apiName) {
+    const searchTerm = apiName.toLowerCase().trim()
+
+    // First, check if the API name is used as a key in the dictionary
+    for (const [key, fullName] of Object.entries(doctorNames.names)) {
+      if (key.toLowerCase() === searchTerm) {
+        return fullName
+      }
+    }
+
+    // Then try to find if searchTerm contains any part of a real name (last name match)
+    const searchParts = searchTerm.split(/\s+/)
+    const searchLastName = searchParts[searchParts.length - 1]
+
     for (const fullName of Object.values(doctorNames.names)) {
       const fullNameLower = fullName.toLowerCase()
       const nameParts = fullNameLower.split(/\s+/)
       const lastName = nameParts[nameParts.length - 1]
 
       // Match by last name
-      if (lastName === apiLastName) {
+      if (lastName === searchLastName || fullNameLower.includes(searchLastName)) {
         return fullName
       }
     }

@@ -14,18 +14,38 @@ Copy the example file and populate with actual staff names:
 cp src/lib/doctor-names.json.example src/lib/doctor-names.json
 ```
 
-Then edit `src/lib/doctor-names.json` to add the real staff roster. Format:
+Then edit `src/lib/doctor-names.json` to add the real staff roster.
+
+**Important**: Use the exact pseudonyms/IDs that the API returns as the keys!
+
+Format:
 
 ```json
 {
-  "comment": "Dictionary mapping doctor IDs to real names.",
+  "comment": "Dictionary mapping API pseudonyms to real names.",
   "names": {
-    "1": "FIRSTNAME Lastname",
-    "2": "FIRSTNAME Lastname",
-    ...
+    "API_PSEUDONYM_OR_ID": "REAL NAME",
+    "467": "FIRSTNAME Lastname",
+    "Rossi": "MARIO Rossi",
+    "Mario Rossi": "MARIO Rossi"
   }
 }
 ```
+
+**How to find the API pseudonyms:**
+1. Load the app in the browser
+2. Open developer console (F12)
+3. Look at the network request to `/api/shifts`
+4. Check the response JSON to see what names/IDs are in `people[].id` and `people[].name`
+5. Use those exact values as keys in your `doctor-names.json`
+
+**Matching Strategy:**
+The app will try multiple matching approaches:
+1. Direct key lookup (fastest - use API pseudonym as key)
+2. Case-insensitive key lookup
+3. Last name matching
+4. Substring matching
+5. Falls back to displaying API name if no match
 
 ### 2. Private Documentation
 
