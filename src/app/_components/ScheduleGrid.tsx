@@ -56,93 +56,104 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
         height: 'calc(100vh - 60px)'
       } as React.CSSProperties}
     >
-      <div
-        className="schedule-grid"
-        style={{
-          height: `${rowVirtualizer.getTotalSize() + 48}px`,
-          gridTemplateColumns: `minmax(200px, auto) repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
-        }}
-      >
-        {/* Header Row */}
-        <div className={`grid-header grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold bg-card border-b border-r border-border`}>
-          Nome
-        </div>
-        {dayHeaders.map((day) => (
-          <div
-            key={`header-${day}`}
-            className={`grid-header ${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
-              isWeekend(ym, day) ? 'bg-muted' : 'bg-card'
-            } ${isItalianHoliday(ym, day) ? 'bg-accent' : ''} border-b border-r border-border`}
-          >
-            {day}
+      <div className="schedule-grid-wrapper" style={{ position: 'relative' }}>
+        <div
+          className="schedule-grid"
+          style={{
+            gridTemplateColumns: `minmax(200px, auto) repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+          }}
+        >
+          {/* Header Row */}
+          <div className={`grid-header grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold bg-card border-b border-r border-border`}>
+            Nome
           </div>
-        ))}
+          {dayHeaders.map((day) => (
+            <div
+              key={`header-${day}`}
+              className={`grid-header ${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
+                isWeekend(ym, day) ? 'bg-muted' : 'bg-card'
+              } ${isItalianHoliday(ym, day) ? 'bg-accent' : ''} border-b border-r border-border`}
+            >
+              {day}
+            </div>
+          ))}
+        </div>
 
         {/* Virtualized Rows */}
-        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-          const person = peopleWithNames[virtualRow.index]
-          const personRow = rows[virtualRow.index]
+        <div
+          style={{
+            height: `${rowVirtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const person = peopleWithNames[virtualRow.index]
+            const personRow = rows[virtualRow.index]
 
-          return (
-            <div
-              key={virtualRow.key}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${virtualRow.start + 48}px)`,
-                display: 'contents',
-              }}
-            >
-              {/* Person Name Cell */}
+            return (
               <div
-                className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-card border-b border-r border-border truncate`}
-                title={person.displayName}
+                key={virtualRow.key}
+                className="schedule-grid"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`,
+                  gridTemplateColumns: `minmax(200px, auto) repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+                }}
               >
-                {person.displayName}
+                {/* Person Name Cell */}
+                <div
+                  className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-card border-b border-r border-border truncate`}
+                  title={person.displayName}
+                >
+                  {person.displayName}
+                </div>
+
+                {/* Shift Cells */}
+                {dayHeaders.map((day) => {
+                  const codes = personRow[day - 1]
+                  const isWeekendDay = isWeekend(ym, day)
+                  const isHoliday = isItalianHoliday(ym, day)
+
+                  let bgClass = 'bg-card'
+                  if (isWeekendDay) bgClass = 'bg-muted'
+                  if (isHoliday) bgClass = 'bg-accent'
+
+                  return (
+                    <div
+                      key={`${person.id}-${day}`}
+                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium border-b border-r border-border`}
+                    >
+                      {codes && codes.length > 0 ? (
+                        <div className="flex flex-col gap-1 w-full items-center">
+                          {codes.map((code, idx) => (
+                            <div
+                              key={`${person.id}-${day}-${idx}`}
+                              className="px-2 py-1 rounded text-xs font-semibold w-fit min-w-[2rem] text-center"
+                              style={{
+                                backgroundColor: getShiftColor(code).background,
+                                color: getShiftColor(code).text,
+                              }}
+                              title={code}
+                            >
+                              {code}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-
-              {/* Shift Cells */}
-              {dayHeaders.map((day) => {
-                const codes = personRow[day - 1]
-                const isWeekendDay = isWeekend(ym, day)
-                const isHoliday = isItalianHoliday(ym, day)
-
-                let bgClass = 'bg-card'
-                if (isWeekendDay) bgClass = 'bg-muted'
-                if (isHoliday) bgClass = 'bg-accent'
-
-                return (
-                  <div
-                    key={`${person.id}-${day}`}
-                    className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium border-b border-r border-border`}
-                  >
-                    {codes && codes.length > 0 ? (
-                      <div className="flex flex-col gap-1 w-full items-center">
-                        {codes.map((code, idx) => (
-                          <div
-                            key={`${person.id}-${day}-${idx}`}
-                            className="px-2 py-1 rounded text-xs font-semibold w-fit min-w-[2rem] text-center"
-                            style={{
-                              backgroundColor: getShiftColor(code).background,
-                              color: getShiftColor(code).text,
-                            }}
-                            title={code}
-                          >
-                            {code}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">-</span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     </div>
   )
