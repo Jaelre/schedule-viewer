@@ -6,14 +6,16 @@ import type { ShiftCodeMap } from '@/lib/types'
 
 interface LegendCardProps {
   codes: string[]
+  shiftNames?: Record<string, string>
   codeMap?: ShiftCodeMap
 }
 
-export function LegendCard({ codes, codeMap }: LegendCardProps) {
+export function LegendCard({ codes, shiftNames, codeMap }: LegendCardProps) {
   const legend = useMemo(() => {
     return codes.map((code) => {
       const colors = getShiftColor(code)
-      const label = codeMap?.[code]?.label || code
+      // Use shiftNames from API first, then fallback to codeMap, then just the code
+      const label = shiftNames?.[code] || codeMap?.[code]?.label || code
 
       return {
         code,
@@ -21,7 +23,7 @@ export function LegendCard({ codes, codeMap }: LegendCardProps) {
         colors,
       }
     })
-  }, [codes, codeMap])
+  }, [codes, shiftNames, codeMap])
 
   if (legend.length === 0) {
     return null
