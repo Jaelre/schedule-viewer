@@ -33,7 +33,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   const rowVirtualizer = useVirtualizer({
     count: peopleWithNames.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => (density === 'compact' ? 32 : 48),
+    estimateSize: () => (density === 'compact' ? 48 : 64),
     overscan: 5,
   })
 
@@ -44,7 +44,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
 
   // Cell size based on density
   const cellPadding = density === 'compact' ? 'p-1' : 'p-2'
-  const cellHeight = density === 'compact' ? 'h-8' : 'h-12'
+  const cellHeight = density === 'compact' ? 'h-12' : 'h-16'
   const textSize = density === 'compact' ? 'text-xs' : 'text-sm'
 
   return (
