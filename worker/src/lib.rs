@@ -68,17 +68,27 @@ struct ShiftDetails {
 
 #[derive(Deserialize)]
 struct UserDetails {
+    #[serde(default)]
     id: Option<u64>,
-    fname: String,
-    lname: String,
+    #[serde(default)]
+    fname: Option<String>,
+    #[serde(default)]
+    lname: Option<String>,
     #[serde(default)]
     #[allow(dead_code)]
     mname: Option<String>,
 }
 
 fn log_request(req: &Request) {
-    let cf_coords = req.cf().map(|cf| cf.coordinates()).flatten().unwrap_or_default();
-    let cf_region = req.cf().and_then(|cf| cf.region()).unwrap_or_else(|| "unknown region".into());
+    let cf_coords = req
+        .cf()
+        .map(|cf| cf.coordinates())
+        .flatten()
+        .unwrap_or_default();
+    let cf_region = req
+        .cf()
+        .and_then(|cf| cf.region())
+        .unwrap_or_else(|| "unknown region".into());
     console_log!(
         "{} - [{}], located at: {:?}, within: {}",
         Date::now().to_string(),
@@ -141,13 +151,7 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     );
 
     // Fetch from upstream API with timeout and retry
-    let upstream_data = match fetch_with_retry(
-        &upstream_url,
-        config.api_timeout_ms,
-        2,
-        None,
-    )
-    .await
+    let upstream_data = match fetch_with_retry(&upstream_url, config.api_timeout_ms, 2, None).await
     {
         Ok(data) => data,
         Err(e) => {
@@ -296,12 +300,10 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
     let mut shift_codes: HashSet<String> = HashSet::new();
 
     for shift in &shifts {
-        let user_id = shift.user.id
-            .map(|id| id.to_string())
-            .unwrap_or_else(|| format!("{}_{}", shift.user.fname, shift.user.lname));
+        let (user_id, display_name) = get_user_identifier(&shift.user);
         people_map.entry(user_id.clone()).or_insert_with(|| Person {
             id: user_id.clone(),
-            name: format!("{} {}", shift.user.fname, shift.user.lname),
+            name: display_name,
         });
 
         // Use alias as the shift code
@@ -330,9 +332,7 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
 
     // Fill in the matrix
     for shift in shifts {
-        let user_id = shift.user.id
-            .map(|id| id.to_string())
-            .unwrap_or_else(|| format!("{}_{}", shift.user.fname, shift.user.lname));
+        let (user_id, _) = get_user_identifier(&shift.user);
         if let Some(&person_idx) = person_indices.get(&user_id) {
             // Extract day from start_time (format: "YYYY-MM-DD HH:MM:SS")
             if let Some(day) = extract_day_from_datetime(&shift.start_time) {
@@ -383,6 +383,103 @@ fn extract_day_from_datetime(datetime: &str) -> Option<usize> {
         parts[2].parse().ok()
     } else {
         None
+    }
+}
+
+fn get_user_identifier(user: &UserDetails) -> (String, String) {
+    let display_name = build_display_name(user);
+    let user_id = user
+        .id
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| build_fallback_user_id(user, &display_name));
+
+    (user_id, display_name)
+}
+
+fn build_display_name(user: &UserDetails) -> String {
+    let first = user.fname.as_deref().unwrap_or("").trim();
+    let last = user.lname.as_deref().unwrap_or("").trim();
+
+    match (first.is_empty(), last.is_empty()) {
+        (false, false) => format!("{} {}", first, last),
+        (false, true) => first.to_string(),
+        (true, false) => last.to_string(),
+        (true, true) => "Unknown".to_string(),
+    }
+}
+
+fn build_fallback_user_id(user: &UserDetails, display_name: &str) -> String {
+    if display_name == "Unknown" {
+        return "unknown".to_string();
+    }
+
+    let mut parts: Vec<String> = Vec::new();
+
+    if let Some(first) = user.fname.as_deref().map(str::trim) {
+        if !first.is_empty() {
+            parts.push(first.replace(' ', "_"));
+        }
+    }
+
+    if let Some(last) = user.lname.as_deref().map(str::trim) {
+        if !last.is_empty() {
+            parts.push(last.replace(' ', "_"));
+        }
+    }
+
+    if parts.is_empty() {
+        "unknown".to_string()
+    } else {
+        parts.join("_")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_shift(user: UserDetails) -> UpstreamShift {
+        UpstreamShift {
+            start_time: "2025-10-01 08:00:00".to_string(),
+            end_time: "2025-10-01 16:00:00".to_string(),
+            shift: ShiftDetails {
+                name: "Day".to_string(),
+                alias: "Day".to_string(),
+                color: Some("#ffffff".to_string()),
+            },
+            user,
+        }
+    }
+
+    #[test]
+    fn handles_null_user_names() {
+        let shifts = vec![sample_shift(UserDetails {
+            id: None,
+            fname: None,
+            lname: None,
+            mname: None,
+        })];
+
+        let month = transform_to_month_shifts("2025-10".to_string(), shifts);
+
+        assert_eq!(month.people.len(), 1);
+        assert_eq!(month.people[0].id, "unknown");
+        assert_eq!(month.people[0].name, "Unknown");
+    }
+
+    #[test]
+    fn prefers_api_user_id_when_present() {
+        let shifts = vec![sample_shift(UserDetails {
+            id: Some(42),
+            fname: Some("Doctor".to_string()),
+            lname: Some("Strange".to_string()),
+            mname: None,
+        })];
+
+        let month = transform_to_month_shifts("2025-10".to_string(), shifts);
+
+        assert_eq!(month.people[0].id, "42");
+        assert_eq!(month.people[0].name, "Doctor Strange");
     }
 }
 
