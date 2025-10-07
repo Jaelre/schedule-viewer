@@ -1,0 +1,15 @@
+{
+  "comment": "Dictionary mapping anonymized doctor IDs to real names. Format: 'id': 'Full Name'",
+  "names": {
+    "1": "Dr. Mario Rossi",
+    "2": "Dr. Laura Bianchi",
+    "3": "Dr. Giuseppe Verdi",
+    "4": "Dr. Anna Ferrari",
+    "5": "Dr. Francesco Romano",
+    "6": "Dr. Maria Colombo",
+    "7": "Dr. Antonio Ricci",
+    "8": "Dr. Elena Marino",
+    "9": "Dr. Marco Greco",
+    "10": "Dr. Giulia Bruno"
+  }
+}

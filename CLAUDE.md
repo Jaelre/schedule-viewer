@@ -67,12 +67,12 @@ npm run dev
 {
   ym: "2025-10",              // Month identifier
   people: Person[],           // Array of {id, name}
-  rows: (string|null)[][],    // Matrix: rows[personIdx][dayIdx-1] = shiftCode
+  rows: (string[]|null)[][],  // Matrix: rows[personIdx][dayIdx-1] = shiftCodes[]
   codes: string[]             // Unique shift codes for legend
 }
 ```
 
-**Critical**: `rows` is pre-computed for O(1) lookup. `rows[i][d]` gives shift code for person `i` on day `d+1` (zero-indexed array, 1-indexed days).
+**Critical**: `rows` is pre-computed for O(1) lookup. `rows[i][d]` gives array of shift codes for person `i` on day `d+1` (zero-indexed array, 1-indexed days). Each cell can contain multiple shifts (e.g., morning + afternoon) which are displayed stacked vertically in the grid.
 
 ### Worker Responsibilities
 - **Security**: Inject `API_TOKEN` from env (never exposed to browser)
