@@ -46,6 +46,7 @@ worker/debug/
 worker/build/
 worker/.wrangler/
 worker/wrangler-local.toml
+worker/.dev.vars
 Cargo.lock
 
 # Editor
