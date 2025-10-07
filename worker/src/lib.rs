@@ -58,15 +58,22 @@ struct UpstreamShift {
 
 #[derive(Deserialize)]
 struct ShiftDetails {
+    #[allow(dead_code)]
     name: String,
-    abbreviation: Option<String>,
+    alias: String,
+    #[serde(default)]
+    #[allow(dead_code)]
+    color: Option<String>,
 }
 
 #[derive(Deserialize)]
 struct UserDetails {
     id: Option<u64>,
-    first_name: String,
-    last_name: String,
+    fname: String,
+    lname: String,
+    #[serde(default)]
+    #[allow(dead_code)]
+    mname: Option<String>,
 }
 
 fn log_request(req: &Request) {
@@ -255,9 +262,8 @@ async fn fetch_with_retry(
         let mut request = Request::new_with_init(url, &request_init)?;
 
         if let Some(headers) = headers {
-            let request_headers = request.headers_mut()?;
             for (name, value) in headers {
-                request_headers.set(name, value)?;
+                request.headers_mut()?.set(name, value)?;
             }
         }
 
@@ -292,18 +298,14 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
     for shift in &shifts {
         let user_id = shift.user.id
             .map(|id| id.to_string())
-            .unwrap_or_else(|| format!("{}_{}", shift.user.first_name, shift.user.last_name));
+            .unwrap_or_else(|| format!("{}_{}", shift.user.fname, shift.user.lname));
         people_map.entry(user_id.clone()).or_insert_with(|| Person {
             id: user_id.clone(),
-            name: format!("{} {}", shift.user.first_name, shift.user.last_name),
+            name: format!("{} {}", shift.user.fname, shift.user.lname),
         });
 
-        // Use abbreviation if available, otherwise use full name
-        let code = shift
-            .shift
-            .abbreviation
-            .clone()
-            .unwrap_or_else(|| shift.shift.name.clone());
+        // Use alias as the shift code
+        let code = shift.shift.alias.clone();
         if !code.is_empty() {
             shift_codes.insert(code);
         }
@@ -330,12 +332,12 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
     for shift in shifts {
         let user_id = shift.user.id
             .map(|id| id.to_string())
-            .unwrap_or_else(|| format!("{}_{}", shift.user.first_name, shift.user.last_name));
+            .unwrap_or_else(|| format!("{}_{}", shift.user.fname, shift.user.lname));
         if let Some(&person_idx) = person_indices.get(&user_id) {
             // Extract day from start_time (format: "YYYY-MM-DD HH:MM:SS")
             if let Some(day) = extract_day_from_datetime(&shift.start_time) {
                 if day > 0 && day <= days_in_month {
-                    let code = shift.shift.abbreviation.unwrap_or(shift.shift.name);
+                    let code = shift.shift.alias;
                     rows[person_idx][day - 1] = Some(code);
                 }
             }
