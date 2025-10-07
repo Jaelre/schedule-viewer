@@ -124,12 +124,26 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
 
     // Build upstream URL
     let upstream_url = format!(
-        "{}/public/schedule?token={}&startDate={}&endDate={}&scheduleVersion=live",
-        config.api_base_url, config.api_token, start_date, end_date
+        "{}/public/schedule?startDate={}&endDate={}&scheduleVersion=live",
+        config.api_base_url, start_date, end_date
     );
 
+    let auth_headers = vec![
+        (
+            "Authorization".to_string(),
+            format!("Bearer {}", config.api_token),
+        ),
+    ];
+
     // Fetch from upstream API with timeout and retry
-    let upstream_data = match fetch_with_retry(&upstream_url, config.api_timeout_ms, 2).await {
+    let upstream_data = match fetch_with_retry(
+        &upstream_url,
+        config.api_timeout_ms,
+        2,
+        Some(auth_headers.as_slice()),
+    )
+    .await
+    {
         Ok(data) => data,
         Err(e) => return error_response("UPSTREAM_ERROR", &e.to_string(), 502),
     };
@@ -201,14 +215,26 @@ fn get_month_bounds(ym: &str) -> Result<(String, String)> {
     Ok((start_date, end_date))
 }
 
-async fn fetch_with_retry(url: &str, timeout_ms: u64, max_retries: u32) -> Result<String> {
+async fn fetch_with_retry(
+    url: &str,
+    timeout_ms: u64,
+    max_retries: u32,
+    headers: Option<&[(String, String)]>,
+) -> Result<String> {
     let mut retries = 0;
 
     loop {
         let mut request_init = RequestInit::new();
         request_init.with_method(Method::Get);
 
-        let request = Request::new_with_init(url, &request_init)?;
+        let mut request = Request::new_with_init(url, &request_init)?;
+
+        if let Some(headers) = headers {
+            let request_headers = request.headers_mut();
+            for (name, value) in headers {
+                request_headers.set(name, value)?;
+            }
+        }
 
         match Fetch::Request(request).send().await {
             Ok(mut response) => {
