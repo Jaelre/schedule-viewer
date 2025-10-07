@@ -64,19 +64,24 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
           }}
         >
           {/* Header Row */}
-          <div className={`grid-header grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold bg-card border-b border-r border-border`}>
+          <div className={`grid-header grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b border-r border-gray-300`}>
             Nome
           </div>
-          {dayHeaders.map((day) => (
-            <div
-              key={`header-${day}`}
-              className={`grid-header ${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
-                isWeekend(ym, day) ? 'bg-muted' : 'bg-card'
-              } ${isItalianHoliday(ym, day) ? 'bg-accent' : ''} border-b border-r border-border`}
-            >
-              {day}
-            </div>
-          ))}
+          {dayHeaders.map((day) => {
+            const isWeekendDay = isWeekend(ym, day)
+            const isHoliday = isItalianHoliday(ym, day)
+
+            return (
+              <div
+                key={`header-${day}`}
+                className={`grid-header ${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
+                  isHoliday ? 'bg-red-50 text-red-900' : isWeekendDay ? 'bg-blue-50 text-blue-900' : 'bg-white'
+                } border-b border-r border-gray-300`}
+              >
+                {day}
+              </div>
+            )
+          })}
         </div>
 
         {/* Virtualized Rows */}
@@ -107,7 +112,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
               >
                 {/* Person Name Cell */}
                 <div
-                  className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-card border-b border-r border-border truncate`}
+                  className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-white border-b border-r border-gray-300 truncate`}
                   title={person.displayName}
                 >
                   {person.displayName}
@@ -119,14 +124,14 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   const isWeekendDay = isWeekend(ym, day)
                   const isHoliday = isItalianHoliday(ym, day)
 
-                  let bgClass = 'bg-card'
-                  if (isWeekendDay) bgClass = 'bg-muted'
-                  if (isHoliday) bgClass = 'bg-accent'
+                  let bgClass = 'bg-white'
+                  if (isWeekendDay) bgClass = 'bg-blue-50'
+                  if (isHoliday) bgClass = 'bg-red-50'
 
                   return (
                     <div
                       key={`${person.id}-${day}`}
-                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium border-b border-r border-border`}
+                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium border-b border-r border-gray-300`}
                     >
                       {codes && codes.length > 0 ? (
                         <div className="flex flex-col gap-1 w-full items-center">
