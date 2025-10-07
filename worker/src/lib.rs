@@ -69,8 +69,8 @@ struct ShiftDetails {
 #[derive(Deserialize)]
 struct UserDetails {
     id: Option<u64>,
-    fname: String,
-    lname: String,
+    fname: Option<String>,
+    lname: Option<String>,
     #[serde(default)]
     #[allow(dead_code)]
     mname: Option<String>,
@@ -296,12 +296,15 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
     let mut shift_codes: HashSet<String> = HashSet::new();
 
     for shift in &shifts {
+        let fname = shift.user.fname.as_deref().unwrap_or("Unknown");
+        let lname = shift.user.lname.as_deref().unwrap_or("");
+
         let user_id = shift.user.id
             .map(|id| id.to_string())
-            .unwrap_or_else(|| format!("{}_{}", shift.user.fname, shift.user.lname));
+            .unwrap_or_else(|| format!("{}_{}", fname, lname));
         people_map.entry(user_id.clone()).or_insert_with(|| Person {
             id: user_id.clone(),
-            name: format!("{} {}", shift.user.fname, shift.user.lname),
+            name: format!("{} {}", fname, lname).trim().to_string(),
         });
 
         // Use alias as the shift code
@@ -330,9 +333,12 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
 
     // Fill in the matrix
     for shift in shifts {
+        let fname = shift.user.fname.as_deref().unwrap_or("Unknown");
+        let lname = shift.user.lname.as_deref().unwrap_or("");
+
         let user_id = shift.user.id
             .map(|id| id.to_string())
-            .unwrap_or_else(|| format!("{}_{}", shift.user.fname, shift.user.lname));
+            .unwrap_or_else(|| format!("{}_{}", fname, lname));
         if let Some(&person_idx) = person_indices.get(&user_id) {
             // Extract day from start_time (format: "YYYY-MM-DD HH:MM:SS")
             if let Some(day) = extract_day_from_datetime(&shift.start_time) {
