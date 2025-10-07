@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Sticky grid CSS */
+.schedule-grid-container {
+  overflow: auto;
+  position: relative;
+}
+
+.schedule-grid {
+  display: grid;
+  gap: 1px;
+  background: #e5e7eb;
+}
+
+.grid-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: white;
+}
+
+.grid-first-col {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: white;
+}
+
+.grid-header.grid-first-col {
+  z-index: 30;
+}
+
+.grid-cell {
+  @apply p-2 bg-white text-center;
+}
+
+.grid-cell-weekend {
+  @apply bg-gray-50;
+}
+
+.grid-cell-holiday {
+  @apply bg-blue-50;
+}

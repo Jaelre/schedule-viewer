@@ -1,0 +1,14 @@
+name = "schedule-viewer-worker"
+main = "build/worker/shim.mjs"
+compatibility_date = "2024-01-01"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
+
+[vars]
+API_BASE_URL = "https://api.metricaid.com/api/v1"
+API_TIMEOUT_MS = "8000"
+CACHE_TTL_SECONDS = "300"
+
+# API_TOKEN should be set as a secret via:
+# wrangler secret put API_TOKEN
