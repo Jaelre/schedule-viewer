@@ -1,6 +1,29 @@
 // lib/colors.ts - Deterministic color mapping for shift codes
 // Colors must be accessible (WCAG AA contrast ratio)
 
+import shiftColorsData from './shift-colors.json'
+
+interface ShiftColorConfig {
+  background: string
+  text: string
+  description?: string
+}
+
+interface ShiftColorsData {
+  comment: string
+  colors: Record<string, ShiftColorConfig>
+  fallback: {
+    comment: string
+    saturation_min: number
+    saturation_range: number
+    lightness_min: number
+    lightness_range: number
+    text_lightness_offset: number
+  }
+}
+
+const shiftColors: ShiftColorsData = shiftColorsData
+
 /**
  * Hash a string to a number (for deterministic color generation)
  */
@@ -19,35 +42,27 @@ function hashCode(str: string): number {
  * Returns { background, text } with accessible contrast
  */
 export function getShiftColor(code: string): { background: string; text: string } {
-  // Common shift codes can have predefined colors
-  const predefinedColors: Record<string, { background: string; text: string }> = {
-    D: { background: 'hsl(43, 74%, 86%)', text: 'hsl(43, 74%, 16%)' }, // Day - Yellow
-    N: { background: 'hsl(231, 48%, 78%)', text: 'hsl(231, 48%, 8%)' }, // Night - Blue
-    O: { background: 'hsl(0, 0%, 95%)', text: 'hsl(0, 0%, 20%)' }, // Off - Gray
-    SM: { background: 'hsl(173, 58%, 79%)', text: 'hsl(173, 58%, 9%)' }, // Smonto - Teal
-    F: { background: 'hsl(0, 0%, 95%)', text: 'hsl(0, 0%, 20%)' }, // Ferie (Vacation) - Gray
-    M: { background: 'hsl(270, 50%, 82%)', text: 'hsl(270, 50%, 12%)' }, // Malattia (Sick) - Purple
-    R: { background: 'hsl(120, 40%, 85%)', text: 'hsl(120, 40%, 15%)' }, // Riposo - Green
+  // Check if there's a predefined color in the JSON config
+  if (shiftColors.colors[code]) {
+    return {
+      background: shiftColors.colors[code].background,
+      text: shiftColors.colors[code].text,
+    }
   }
 
-  if (predefinedColors[code]) {
-    return predefinedColors[code]
-  }
-
-  // Generate color from hash
+  // Generate color from hash using fallback configuration
   const hash = hashCode(code)
+  const { saturation_min, saturation_range, lightness_min, lightness_range, text_lightness_offset } = shiftColors.fallback
 
   // Use hash to generate a hue (0-360)
   const hue = hash % 360
 
   // Generate a light background with dark text for good contrast
-  // Saturation: 40-70% for vibrant but not overwhelming colors
-  // Lightness: 75-90% for light backgrounds
-  const saturation = 40 + (hash % 30)
-  const lightness = 75 + (hash % 15)
+  const saturation = saturation_min + (hash % saturation_range)
+  const lightness = lightness_min + (hash % lightness_range)
 
   const background = `hsl(${hue}, ${saturation}%, ${lightness}%)`
-  const text = `hsl(${hue}, ${saturation}%, ${Math.max(10, lightness - 65)}%)`
+  const text = `hsl(${hue}, ${saturation}%, ${Math.max(10, lightness - text_lightness_offset)}%)`
 
   return { background, text }
 }
