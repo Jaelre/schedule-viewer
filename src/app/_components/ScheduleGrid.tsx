@@ -57,14 +57,14 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
       } as React.CSSProperties}
     >
       <div className="schedule-grid-wrapper" style={{ position: 'relative' }}>
+        {/* Header Row - Sticky */}
         <div
-          className="schedule-grid"
+          className="schedule-grid sticky top-0 z-30"
           style={{
             gridTemplateColumns: `minmax(200px, auto) repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
           }}
         >
-          {/* Header Row */}
-          <div className={`grid-header grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b border-r border-gray-300`}>
+          <div className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b border-r border-gray-300`}>
             Nome
           </div>
           {dayHeaders.map((day) => {
@@ -74,7 +74,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
             return (
               <div
                 key={`header-${day}`}
-                className={`grid-header ${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
+                className={`${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
                   isHoliday ? 'bg-red-50 text-red-900' : isWeekendDay ? 'bg-blue-50 text-blue-900' : 'bg-white'
                 } border-b border-r border-gray-300`}
               >
