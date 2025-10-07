@@ -62,3 +62,12 @@ Thumbs.db
 
 # API samples (exploration scripts)
 .api-samples/
+
+# Sensitive information and private files
+docs/private/
+src/lib/doctor-names.json
+*.xlsx
+*.xls
+*.csv
+**/sensitive/
+**/confidential/

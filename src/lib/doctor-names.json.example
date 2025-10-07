@@ -1,0 +1,8 @@
+{
+  "comment": "Dictionary mapping doctor IDs to real names. Copy this file to doctor-names.json and populate with actual staff names. Format: 'id': 'Full Name'",
+  "names": {
+    "1": "FIRSTNAME Lastname",
+    "2": "FIRSTNAME Lastname",
+    "3": "FIRSTNAME Lastname"
+  }
+}
