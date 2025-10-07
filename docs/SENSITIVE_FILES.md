@@ -47,7 +47,42 @@ The app will try multiple matching approaches:
 4. Substring matching
 5. Falls back to displaying API name if no match
 
-### 2. Private Documentation
+### 2. Shift Color Configuration
+
+**File**: `src/lib/shift-colors.json`
+
+Customize shift code colors by copying the example file:
+
+```bash
+cp src/lib/shift-colors.json.example src/lib/shift-colors.json
+```
+
+Then edit `src/lib/shift-colors.json` to customize colors for specific shift codes.
+
+**Format**:
+
+```json
+{
+  "colors": {
+    "D": {
+      "background": "hsl(43, 74%, 86%)",
+      "text": "hsl(43, 74%, 16%)",
+      "description": "Day shift - Yellow"
+    }
+  },
+  "fallback": {
+    "saturation_min": 40,
+    "saturation_range": 30,
+    "lightness_min": 75,
+    "lightness_range": 15,
+    "text_lightness_offset": 65
+  }
+}
+```
+
+Colors use HSL format for easy adjustment. Codes not defined will auto-generate colors using the fallback parameters.
+
+### 3. Private Documentation
 
 **Directory**: `docs/private/`
 
