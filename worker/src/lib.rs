@@ -52,6 +52,7 @@ struct UpstreamResponse {
 #[derive(Deserialize)]
 struct UpstreamShift {
     start_time: String,
+    #[allow(dead_code)]
     end_time: String,
     shift: ShiftDetails,
     user: UserDetails,
@@ -71,12 +72,14 @@ struct UserDetails {
 }
 
 fn log_request(req: &Request) {
+    let cf_coords = req.cf().map(|cf| cf.coordinates()).flatten().unwrap_or_default();
+    let cf_region = req.cf().and_then(|cf| cf.region()).unwrap_or_else(|| "unknown region".into());
     console_log!(
         "{} - [{}], located at: {:?}, within: {}",
         Date::now().to_string(),
         req.path(),
-        req.cf().coordinates().unwrap_or_default(),
-        req.cf().region().unwrap_or_else(|| "unknown region".into())
+        cf_coords,
+        cf_region
     );
 }
 
@@ -123,7 +126,7 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     // Calculate month boundaries
     let (start_date, end_date) = match get_month_bounds(&ym) {
         Ok(bounds) => bounds,
-        Err(e) => return error_response("DATE_ERROR", &e, 400),
+        Err(e) => return error_response("DATE_ERROR", &e.to_string(), 400),
     };
 
     // Build upstream URL
@@ -301,7 +304,7 @@ async fn fetch_with_retry(
                         )));
                     }
                 }
-                Err(e) if retries < max_retries => {
+                Err(_e) if retries < max_retries => {
                     retries += 1;
                     continue;
                 }
