@@ -18,14 +18,14 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  background: white;
+  @apply bg-card;
 }
 
 .grid-first-col {
   position: sticky;
   left: 0;
   z-index: 10;
-  background: white;
+  @apply bg-card;
 }
 
 .grid-header.grid-first-col {
@@ -33,13 +33,5 @@
 }
 
 .grid-cell {
-  @apply p-2 bg-white text-center;
-}
-
-.grid-cell-weekend {
-  @apply bg-gray-50;
-}
-
-.grid-cell-holiday {
-  @apply bg-blue-50;
+  @apply text-center;
 }
