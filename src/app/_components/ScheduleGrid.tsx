@@ -56,15 +56,15 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
         height: 'calc(100vh - 60px)'
       } as React.CSSProperties}
     >
-      <div className="schedule-grid-wrapper" style={{ position: 'relative' }}>
+      <div className="schedule-grid-wrapper">
         {/* Header Row - Sticky */}
         <div
-          className="schedule-grid sticky top-0 z-30"
+          className="schedule-grid sticky top-0 z-30 bg-gray-200"
           style={{
             gridTemplateColumns: `minmax(200px, auto) repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
           }}
         >
-          <div className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b border-r border-gray-300`}>
+          <div className={`${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b border-r border-gray-300 sticky left-0 z-40`}>
             Nome
           </div>
           {dayHeaders.map((day) => {
