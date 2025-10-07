@@ -1,7 +1,5 @@
-use futures::future::{select, Either};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
 use worker::*;
 
 mod utils;
@@ -251,65 +249,44 @@ fn get_month_bounds(ym: &str) -> Result<(String, String)> {
 
 async fn fetch_with_retry(
     url: &str,
-    timeout_ms: u64,
+    _timeout_ms: u64,
     max_retries: u32,
     headers: Option<&[(String, String)]>,
 ) -> Result<String> {
     let mut retries = 0;
-    let timeout_duration = Duration::from_millis(timeout_ms);
 
     loop {
-        let controller = AbortController::new()?;
-        let signal = controller.signal();
-
         let mut request_init = RequestInit::new();
         request_init.with_method(Method::Get);
-        request_init.with_signal(Some(signal));
 
         let mut request = Request::new_with_init(url, &request_init)?;
 
         if let Some(headers) = headers {
-            let request_headers = request.headers_mut();
+            let request_headers = request.headers_mut()?;
             for (name, value) in headers {
                 request_headers.set(name, value)?;
             }
         }
 
-        let timeout_future = Delay::from(timeout_duration);
-        let fetch_future = Fetch::Request(request).send();
-
-        match select(timeout_future, fetch_future).await {
-            Either::Left((_, mut pending_fetch)) => {
-                controller.abort();
-                let _ = pending_fetch.await;
-
-                if retries < max_retries {
+        match Fetch::Request(request).send().await {
+            Ok(mut response) => {
+                if response.status_code() >= 200 && response.status_code() < 300 {
+                    return response.text().await;
+                } else if response.status_code() >= 500 && retries < max_retries {
                     retries += 1;
                     continue;
+                } else {
+                    return Err(Error::RustError(format!(
+                        "Upstream returned status {}",
+                        response.status_code()
+                    )));
                 }
-
-                return Err(Error::RustError(UPSTREAM_TIMEOUT_MESSAGE.to_string()));
             }
-            Either::Right((fetch_result, _)) => match fetch_result {
-                Ok(mut response) => {
-                    if response.status_code() >= 200 && response.status_code() < 300 {
-                        return response.text().await;
-                    } else if response.status_code() >= 500 && retries < max_retries {
-                        retries += 1;
-                        continue;
-                    } else {
-                        return Err(Error::RustError(format!(
-                            "Upstream returned status {}",
-                            response.status_code()
-                        )));
-                    }
-                }
-                Err(_e) if retries < max_retries => {
-                    retries += 1;
-                    continue;
-                }
-                Err(e) => return Err(e),
-            },
+            Err(_e) if retries < max_retries => {
+                retries += 1;
+                continue;
+            }
+            Err(e) => return Err(e),
         }
     }
 }
