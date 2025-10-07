@@ -7,8 +7,8 @@ import { useMonthShifts } from '@/lib/api-client'
 import { shiftCodeMap } from '@/lib/shift-code-map'
 import { MonthNav } from './_components/MonthNav'
 import { DensityToggle, type Density } from './_components/DensityToggle'
-import { LegendCard } from './_components/LegendCard'
 import { ScheduleGrid } from './_components/ScheduleGrid'
+import { LegendModal } from './_components/LegendModal'
 
 function PageContent() {
   const searchParams = useSearchParams()
@@ -18,23 +18,20 @@ function PageContent() {
   const currentYM = ymParam && isValidYM(ymParam) ? ymParam : getCurrentYM()
 
   const [density, setDensity] = useState<Density>('comfortable')
+  const [isLegendOpen, setIsLegendOpen] = useState(false)
 
   const { data, isLoading, error, refetch } = useMonthShifts(currentYM)
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-[1600px] mx-auto space-y-6">
-        {/* Header */}
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <h1 className="text-3xl font-bold text-foreground">
-            Visualizzatore Turni Mensile
-          </h1>
-          <DensityToggle onDensityChange={setDensity} />
-        </header>
-
-        {/* Navigation */}
-        <div className="flex justify-center">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-full space-y-2">
+        {/* Compact Navigation Bar */}
+        <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
           <MonthNav currentYM={currentYM} />
+          <DensityToggle
+            onDensityChange={setDensity}
+            onLegendClick={() => setIsLegendOpen(true)}
+          />
         </div>
 
         {/* Loading State */}
@@ -69,13 +66,10 @@ function PageContent() {
 
         {/* Success State */}
         {data && !error && (
-          <div className="space-y-4">
-            {/* Legend */}
-            <LegendCard codes={data.codes || []} codeMap={shiftCodeMap} />
-
+          <>
             {/* Grid */}
             {data.people.length > 0 ? (
-              <ScheduleGrid data={data} density={density} />
+              <ScheduleGrid data={data} density={density} codes={data.codes || []} codeMap={shiftCodeMap} />
             ) : (
               <div className="bg-card border border-border rounded-lg p-12">
                 <div className="text-center text-muted-foreground">
@@ -83,7 +77,15 @@ function PageContent() {
                 </div>
               </div>
             )}
-          </div>
+
+            {/* Legend Modal */}
+            <LegendModal
+              codes={data.codes || []}
+              codeMap={shiftCodeMap}
+              isOpen={isLegendOpen}
+              onClose={() => setIsLegendOpen(false)}
+            />
+          </>
         )}
       </div>
     </div>

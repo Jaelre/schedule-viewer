@@ -43,25 +43,31 @@ export async function GET(request: NextRequest) {
   // Mock shift codes
   const shiftCodes = ['D', 'N', 'O', 'SM', 'F', 'M', 'R']
 
-  // Generate random shifts for each person
+  // Generate random shifts for each person (now supporting multiple shifts per day)
   const rows = people.map((_, personIdx) => {
     return Array.from({ length: daysInMonth }, (_, dayIdx) => {
       // Random pattern: some days off, some with shifts
       const random = Math.random()
       if (random < 0.1) return null // 10% no shift
-      if (random < 0.2) return 'O' // 10% off
 
       // Different patterns for different people
       const day = dayIdx + 1
+
+      // 20% chance of multiple shifts for demonstration
+      const hasMultipleShifts = random > 0.8
+
       if (personIdx % 3 === 0) {
         // Person 0, 3, 6: Day shifts mostly
-        return day % 7 === 0 ? 'O' : 'D'
+        const mainShift = day % 7 === 0 ? 'O' : 'D'
+        return hasMultipleShifts && mainShift !== 'O' ? [mainShift, 'SM'] : [mainShift]
       } else if (personIdx % 3 === 1) {
         // Person 1, 4, 7: Night shifts mostly
-        return day % 7 === 0 ? 'O' : 'N'
+        const mainShift = day % 7 === 0 ? 'O' : 'N'
+        return [mainShift]
       } else {
         // Person 2, 5, 8: Mixed shifts
-        return day % 2 === 0 ? 'D' : 'N'
+        const mainShift = day % 2 === 0 ? 'D' : 'N'
+        return hasMultipleShifts ? [mainShift, 'R'] : [mainShift]
       }
     })
   })
@@ -69,8 +75,8 @@ export async function GET(request: NextRequest) {
   // Extract unique codes from rows
   const uniqueCodes = new Set<string>()
   rows.forEach(row => {
-    row.forEach(code => {
-      if (code) uniqueCodes.add(code)
+    row.forEach(codes => {
+      if (codes) codes.forEach(code => uniqueCodes.add(code))
     })
   })
 

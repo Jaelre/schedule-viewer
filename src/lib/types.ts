@@ -14,8 +14,9 @@ export type MonthShifts = {
   ym: string // "YYYY-MM"
   people: Person[]
   // For performance: normalized matrix form
-  // rows[i][d] gives the code for person i at day d (1-indexed day mapped to 0-based index)
-  rows: (string | null)[][]
+  // rows[i][d] gives the codes for person i at day d (1-indexed day mapped to 0-based index)
+  // Each cell can have multiple shifts (e.g., morning + afternoon)
+  rows: (string[] | null)[][]
   // Optional metadata (codes seen this month)
   codes?: string[]
 }
