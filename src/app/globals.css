@@ -17,29 +17,42 @@
 .grid-header {
   position: sticky;
   top: 0;
-  z-index: 20;
-  background: white;
+  z-index: 30;
 }
 
 .grid-first-col {
   position: sticky;
   left: 0;
-  z-index: 10;
-  background: white;
+  z-index: 20;
 }
 
 .grid-header.grid-first-col {
-  z-index: 30;
+  z-index: 40;
 }
 
 .grid-cell {
-  @apply p-2 bg-white text-center;
+  @apply text-center;
 }
 
-.grid-cell-weekend {
-  @apply bg-gray-50;
+:root {
+  --surface: 255 255 255;
+  --surface-muted: 248 250 252;
+  --surface-highlight: 233 244 255;
+  --surface-strong: 15 23 42;
 }
 
-.grid-cell-holiday {
-  @apply bg-blue-50;
+.bg-surface {
+  background-color: rgb(var(--surface));
+}
+
+.bg-weekend {
+  background-color: rgb(var(--surface-muted));
+}
+
+.bg-holiday {
+  background-color: rgb(var(--surface-highlight));
+}
+
+.text-holiday-foreground {
+  color: rgb(37 99 235);
 }

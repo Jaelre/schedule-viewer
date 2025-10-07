@@ -32,14 +32,14 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   }, [daysInMonth])
 
   // Cell size based on density
-  const cellPadding = density === 'compact' ? 'p-1' : 'p-2'
-  const cellHeight = density === 'compact' ? 'h-8' : 'h-12'
-  const textSize = density === 'compact' ? 'text-xs' : 'text-sm'
+  const cellPadding = density === 'compact' ? 'px-2 py-1' : 'px-3 py-2'
+  const cellHeight = density === 'compact' ? 'h-9' : 'h-14'
+  const textSize = density === 'compact' ? 'text-[11px]' : 'text-sm'
 
   return (
     <div
       ref={parentRef}
-      className="schedule-grid-container border border-border rounded-lg overflow-auto max-h-[600px]"
+      className="schedule-grid-container border border-border rounded-lg overflow-auto max-h-[600px] shadow-sm"
       style={{ '--days-count': daysInMonth } as React.CSSProperties}
     >
       <div
@@ -50,15 +50,21 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
         }}
       >
         {/* Header Row */}
-        <div className={`grid-header grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold bg-card border-b border-border`}>
+        <div
+          className={`grid-header grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold border-b border-r border-border bg-white/95 backdrop-blur`}
+        >
           Nome
         </div>
         {dayHeaders.map((day) => (
           <div
             key={`header-${day}`}
-            className={`grid-header ${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
-              isWeekend(ym, day) ? 'bg-muted' : 'bg-card'
-            } ${isItalianHoliday(ym, day) ? 'bg-accent' : ''} border-b border-border`}
+            className={`grid-header ${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} border-b border-border border-r last:border-r-0 ${
+              isItalianHoliday(ym, day)
+                ? 'bg-holiday text-holiday-foreground'
+                : isWeekend(ym, day)
+                ? 'bg-weekend text-foreground'
+                : 'bg-surface'
+            }`}
           >
             {day}
           </div>
@@ -83,7 +89,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
             >
               {/* Person Name Cell */}
               <div
-                className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-card border-b border-border truncate`}
+                className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-semibold border-b border-r border-border bg-white/95 backdrop-blur truncate text-[13px] uppercase tracking-wide text-muted-foreground`}
                 title={person.name}
               >
                 {person.name}
@@ -95,18 +101,20 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                 const isWeekendDay = isWeekend(ym, day)
                 const isHoliday = isItalianHoliday(ym, day)
 
-                let bgClass = 'bg-card'
-                if (isWeekendDay) bgClass = 'bg-muted'
-                if (isHoliday) bgClass = 'bg-accent'
-
                 return (
                   <div
                     key={`${person.id}-${day}`}
-                    className={`grid-cell ${cellPadding} ${cellHeight} flex items-center justify-center ${textSize} font-medium border-b border-border`}
+                    className={`grid-cell ${cellPadding} ${cellHeight} flex items-center justify-center ${textSize} font-semibold border-b border-r border-border last:border-r-0 ${
+                      isHoliday
+                        ? 'bg-holiday'
+                        : isWeekendDay
+                        ? 'bg-weekend'
+                        : 'bg-surface'
+                    }`}
                   >
                     {code && (
                       <div
-                        className="px-1.5 py-0.5 rounded"
+                        className="px-2 py-0.5 rounded-md shadow-sm ring-1 ring-black/5"
                         style={{
                           backgroundColor: getShiftColor(code).background,
                           color: getShiftColor(code).text,

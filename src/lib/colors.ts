@@ -19,19 +19,36 @@ function hashCode(str: string): number {
  * Returns { background, text } with accessible contrast
  */
 export function getShiftColor(code: string): { background: string; text: string } {
-  // Common shift codes can have predefined colors
-  const predefinedColors: Record<string, { background: string; text: string }> = {
-    D: { background: 'hsl(43, 74%, 86%)', text: 'hsl(43, 74%, 16%)' }, // Day - Yellow
-    N: { background: 'hsl(231, 48%, 78%)', text: 'hsl(231, 48%, 8%)' }, // Night - Blue
-    O: { background: 'hsl(0, 0%, 95%)', text: 'hsl(0, 0%, 20%)' }, // Off - Gray
-    SM: { background: 'hsl(173, 58%, 79%)', text: 'hsl(173, 58%, 9%)' }, // Smonto - Teal
-    F: { background: 'hsl(0, 0%, 95%)', text: 'hsl(0, 0%, 20%)' }, // Ferie (Vacation) - Gray
-    M: { background: 'hsl(270, 50%, 82%)', text: 'hsl(270, 50%, 12%)' }, // Malattia (Sick) - Purple
-    R: { background: 'hsl(120, 40%, 85%)', text: 'hsl(120, 40%, 15%)' }, // Riposo - Green
+  const normalizedCode = code.toUpperCase()
+
+  const curatedPalette: Record<string, { background: string; text: string }> = {
+    REP: { background: '#dcd6ff', text: '#4338ca' }, // Reperibilità - Indigo
+    RA: { background: '#fde68a', text: '#92400e' }, // Reparto/Pronto - Amber
+    OT: { background: '#bfede6', text: '#0f766e' }, // Ortopedia/Turno OT - Teal
+    FT: { background: '#c7d2fe', text: '#312e81' }, // Formazione - Periwinkle
+    SM: { background: '#99f6e4', text: '#0f766e' }, // Smonto - Aqua
+    V: { background: '#fed7aa', text: '#9a3412' }, // Ferie/Vacanza - Apricot
+    P: { background: '#fbcfe8', text: '#9d174d' }, // Permessi - Pink
+    N: { background: '#c7d2fe', text: '#1e3a8a' }, // Night - Blue
+    D: { background: '#fef3c7', text: '#92400e' }, // Day - Soft Yellow
+    R: { background: '#bbf7d0', text: '#166534' }, // Riposo - Mint
+    F: { background: '#e5e7eb', text: '#1f2937' }, // Festivo - Cool Gray
+    M: { background: '#e9d5ff', text: '#6b21a8' }, // Malattia - Lavender
+    ORT: { background: '#fee2e2', text: '#b91c1c' }, // Ortopedia - Rose
+    OB: { background: '#fde2ff', text: '#a21caf' }, // Ostetricia - Magenta
+    G: { background: '#e0f2fe', text: '#0369a1' }, // Guardia - Sky
   }
 
-  if (predefinedColors[code]) {
-    return predefinedColors[code]
+  const paletteKeys = Object.keys(curatedPalette).sort((a, b) => b.length - a.length)
+
+  for (const key of paletteKeys) {
+    if (normalizedCode.startsWith(key)) {
+      return curatedPalette[key]
+    }
+  }
+
+  if (curatedPalette[normalizedCode]) {
+    return curatedPalette[normalizedCode]
   }
 
   // Generate color from hash
