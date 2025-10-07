@@ -23,7 +23,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   const peopleWithNames = useMemo(() => {
     return people.map(person => ({
       ...person,
-      displayName: getDoctorName(person.id)
+      displayName: getDoctorName(person.id, person.name)
     }))
   }, [people])
 
