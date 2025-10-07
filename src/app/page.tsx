@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getCurrentYM, isValidYM } from '@/lib/date'
 import { useMonthShifts } from '@/lib/api-client'
+import { shiftCodeMap } from '@/lib/shift-code-map'
 import { MonthNav } from './_components/MonthNav'
 import { DensityToggle, type Density } from './_components/DensityToggle'
 import { LegendCard } from './_components/LegendCard'
@@ -70,7 +71,7 @@ function PageContent() {
         {data && !error && (
           <div className="space-y-4">
             {/* Legend */}
-            <LegendCard codes={data.codes || []} />
+            <LegendCard codes={data.codes || []} codeMap={shiftCodeMap} />
 
             {/* Grid */}
             {data.people.length > 0 ? (
