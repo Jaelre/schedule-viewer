@@ -102,7 +102,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                 return (
                   <div
                     key={`${person.id}-${day}`}
-                    className={`grid-cell ${cellPadding} ${cellHeight} flex items-center justify-center ${textSize} font-medium border-b border-border`}
+                    className={`grid-cell ${bgClass} ${cellPadding} ${cellHeight} flex items-center justify-center ${textSize} font-medium border-b border-border`}
                   >
                     {code && (
                       <div
