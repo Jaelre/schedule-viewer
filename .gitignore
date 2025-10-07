@@ -66,6 +66,7 @@ Thumbs.db
 # Sensitive information and private files
 docs/private/
 src/lib/doctor-names.json
+src/lib/shift-colors.json
 *.xlsx
 *.xls
 *.csv
