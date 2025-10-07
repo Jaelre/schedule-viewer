@@ -127,25 +127,18 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
         Err(e) => return error_response("DATE_ERROR", &e.to_string(), 400),
     };
 
-    // Build upstream URL
+    // Build upstream URL with token as query parameter
     let upstream_url = format!(
-        "{}/public/schedule?startDate={}&endDate={}&scheduleVersion=live",
-        config.api_base_url, start_date, end_date
+        "{}/public/schedule?token={}&startDate={}&endDate={}&scheduleVersion=live",
+        config.api_base_url, config.api_token, start_date, end_date
     );
-
-    let auth_headers = vec![
-        (
-            "Authorization".to_string(),
-            format!("Bearer {}", config.api_token),
-        ),
-    ];
 
     // Fetch from upstream API with timeout and retry
     let upstream_data = match fetch_with_retry(
         &upstream_url,
         config.api_timeout_ms,
         2,
-        Some(auth_headers.as_slice()),
+        None,
     )
     .await
     {
