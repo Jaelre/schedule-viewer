@@ -45,14 +45,14 @@ export function LegendModal({ codes, codeMap, isOpen, onClose }: LegendModalProp
       onClick={onClose}
     >
       <div
-        className="bg-card border border-border rounded-lg p-6 shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto"
+        className="bg-white border border-gray-300 rounded-lg p-6 shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Legenda Turni</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Legenda Turni</h2>
           <button
             onClick={onClose}
-            className="px-3 py-1 text-sm border border-border rounded hover:bg-accent transition-colors"
+            className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 transition-colors text-gray-700"
             aria-label="Chiudi legenda"
           >
             Chiudi
@@ -60,13 +60,13 @@ export function LegendModal({ codes, codeMap, isOpen, onClose }: LegendModalProp
         </div>
 
         {legend.length === 0 ? (
-          <p className="text-muted-foreground text-center py-4">Nessun turno disponibile</p>
+          <p className="text-gray-600 text-center py-4">Nessun turno disponibile</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {legend.map(({ code, label, colors }) => (
               <div
                 key={code}
-                className="flex items-center gap-2 p-2 rounded border border-border"
+                className="flex items-center gap-2 p-2 rounded border border-gray-200 bg-gray-50"
               >
                 <div
                   className="w-10 h-10 rounded flex items-center justify-center text-sm font-medium flex-shrink-0"
@@ -77,7 +77,7 @@ export function LegendModal({ codes, codeMap, isOpen, onClose }: LegendModalProp
                 >
                   {code}
                 </div>
-                <span className="text-sm text-foreground truncate" title={label}>
+                <span className="text-sm text-gray-900 truncate" title={label}>
                   {label}
                 </span>
               </div>
