@@ -34,17 +34,17 @@ export function MonthNav({ currentYM }: MonthNavProps) {
   }
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-2">
       <button
         onClick={handlePrevious}
-        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        className="px-2 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
         aria-label="Mese precedente"
       >
-        ← Precedente
+        ←
       </button>
 
-      <div className="flex flex-col items-center gap-1 min-w-[200px]">
-        <div className="text-xl font-semibold text-center">
+      <div className="flex items-center gap-2">
+        <div className="text-base font-semibold">
           {formatMonthDisplay(currentYM)}
         </div>
         <label className="sr-only" htmlFor="month-picker">
@@ -55,16 +55,16 @@ export function MonthNav({ currentYM }: MonthNavProps) {
           type="month"
           value={currentYM}
           onChange={handleMonthChange}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       </div>
 
       <button
         onClick={handleNext}
-        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        className="px-2 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
         aria-label="Mese successivo"
       >
-        Successivo →
+        →
       </button>
     </div>
   )
