@@ -144,7 +144,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                           {codes.map((code, idx) => (
                             <div
                               key={`${person.id}-${day}-${idx}`}
-                              className="px-2 py-1 rounded text-xs font-semibold w-fit min-w-[2rem] text-center max-w-full truncate"
+                              className="px-2 py-1 rounded text-xs font-semibold text-center max-w-full"
                               style={{
                                 backgroundColor: getShiftColor(code).background,
                                 color: getShiftColor(code).text,
