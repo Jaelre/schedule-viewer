@@ -72,3 +72,4 @@ src/lib/shift-colors.json
 *.csv
 **/sensitive/
 **/confidential/
+claudedocs/
