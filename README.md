@@ -144,51 +144,66 @@ NEXT_PUBLIC_API_URL=http://localhost:8787/api
 
 ### Cloudflare Pages (Frontend)
 
+#### Option 1: GitHub Integration (Recommended)
+
+1. **Push to GitHub**
+   ```bash
+   git push origin main
+   ```
+
+2. **Connect in Cloudflare Pages dashboard**
+   - Build command: `npm run build`
+   - Build output directory: `out` (Next.js static export)
+   - Framework preset: Next.js
+
+3. **Configure environment variables** in Cloudflare Pages:
+   ```
+   NEXT_PUBLIC_API_URL=https://schedule-viewer-worker.your-account.workers.dev/api
+   NEXT_PUBLIC_SHIFT_CODE_DICT={"D":{"label":"Day"},...}
+   ```
+
+#### Option 2: Manual Deploy with Wrangler
+
 1. **Build the static export**
    ```bash
    npm run build
    ```
 
 2. **Deploy to Cloudflare Pages**
-   - Push to GitHub
-   - Connect repository in Cloudflare Pages dashboard
-   - Build command: `npm run build`
-   - Build output directory: `.next`
-   - Framework preset: Next.js
+   ```bash
+   npx wrangler pages deploy out --project-name schedule-viewer
+   ```
 
-3. **Configure environment variables** in Cloudflare Pages:
-   ```
-   NEXT_PUBLIC_API_URL=https://your-worker.workers.dev/api
-   NEXT_PUBLIC_SHIFT_CODE_DICT={"D":{"label":"Day"},...}
-   ```
+   **IMPORTANT**: Deploy `out/` directory, not `.next/` (with `output: 'export'` in next.config.ts)
 
 ### Cloudflare Worker (Backend)
 
-1. **Build and deploy the Worker**
+1. **Deploy the Worker**
    ```bash
    cd worker
-   wrangler publish
+   wrangler deploy
    ```
 
 2. **Set environment secrets**
    ```bash
    wrangler secret put API_TOKEN
-   # Enter your MetricAid API token
+   # Enter your MetricAid API token when prompted
    ```
 
 3. **Configure wrangler.toml variables** (already in file):
    ```toml
    [vars]
-   API_BASE_URL = "https://api.metricaid.com/api/v1"
+   API_BASE_URL = "https://api.metricaid.com"
    API_TIMEOUT_MS = "8000"
    CACHE_TTL_SECONDS = "300"
    ```
 
 4. **Update frontend** to use Worker URL:
-   - In Cloudflare Pages environment variables, set:
-     ```
+   - Create `.env.production` with:
+     ```bash
      NEXT_PUBLIC_API_URL=https://schedule-viewer-worker.your-account.workers.dev/api
      ```
+   - Or set in Cloudflare Pages dashboard environment variables
 
 ### Routing Setup
 

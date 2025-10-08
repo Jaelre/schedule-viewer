@@ -26,7 +26,7 @@ function PageContent() {
     <div className="min-h-screen bg-background">
       <div className="max-w-full space-y-2">
         {/* Compact Navigation Bar */}
-        <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2 bg-card border-b border-border">
           <MonthNav currentYM={currentYM} />
           <DensityToggle
             onDensityChange={setDensity}

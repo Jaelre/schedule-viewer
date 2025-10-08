@@ -192,7 +192,7 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     };
 
     // Transform to MonthShifts format
-    let month_shifts = transform_to_month_shifts(ym, upstream.data);
+    let month_shifts = transform_to_month_shifts(ym.clone(), upstream.data);
 
     // Build response with caching
     let json = serde_json::to_string(&month_shifts)?;
