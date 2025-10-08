@@ -1,5 +1,8 @@
+use chrono::{DateTime, Utc};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::sync::RwLock;
 use worker::*;
 
 mod utils;
@@ -13,6 +16,15 @@ struct Config {
     api_timeout_ms: u64,
     cache_ttl_seconds: u64,
 }
+
+#[derive(Clone)]
+struct CachedSchedule {
+    json: String,
+    fetched_at: DateTime<Utc>,
+}
+
+static SCHEDULE_CACHE: Lazy<RwLock<HashMap<String, CachedSchedule>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 // Frontend types (MonthShifts contract)
 #[derive(Serialize)]
@@ -136,6 +148,12 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
         Err(e) => return error_response("DATE_ERROR", &e.to_string(), 400),
     };
 
+    let cache_ttl_seconds = config.cache_ttl_seconds;
+
+    if let Some(cached_json) = get_cached_schedule(&ym, cache_ttl_seconds) {
+        return build_success_response(cached_json, cache_ttl_seconds, "HIT");
+    }
+
     // Build upstream URL with token as query parameter
     let upstream_url = format!(
         "{}/public/schedule?token={}&startDate={}&endDate={}&scheduleVersion=live",
@@ -178,14 +196,57 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
 
     // Build response with caching
     let json = serde_json::to_string(&month_shifts)?;
+    store_schedule_in_cache(&ym, json.clone());
+
+    build_success_response(json, cache_ttl_seconds, "MISS")
+}
+
+fn get_cached_schedule(ym: &str, ttl_seconds: u64) -> Option<String> {
+    if ttl_seconds == 0 {
+        return None;
+    }
+
+    let cached = {
+        let cache = SCHEDULE_CACHE.read().ok()?;
+        cache.get(ym).cloned()
+    }?;
+
+    let age_seconds = Utc::now()
+        .signed_duration_since(cached.fetched_at)
+        .num_seconds();
+
+    if age_seconds < ttl_seconds as i64 {
+        Some(cached.json)
+    } else {
+        if let Ok(mut cache) = SCHEDULE_CACHE.write() {
+            cache.remove(ym);
+        }
+        None
+    }
+}
+
+fn store_schedule_in_cache(ym: &str, json: String) {
+    if let Ok(mut cache) = SCHEDULE_CACHE.write() {
+        cache.insert(
+            ym.to_string(),
+            CachedSchedule {
+                json,
+                fetched_at: Utc::now(),
+            },
+        );
+    }
+}
+
+fn build_success_response(json: String, ttl_seconds: u64, cache_status: &str) -> Result<Response> {
     let mut headers = Headers::new();
     headers.set("Content-Type", "application/json")?;
     headers.set(
         "Cache-Control",
-        &format!("public, max-age={}", config.cache_ttl_seconds),
+        &format!("public, max-age={}", ttl_seconds.max(1)),
     )?;
     headers.set("Access-Control-Allow-Origin", "*")?;
     headers.set("Vary", "Origin")?;
+    headers.set("X-Cache-Status", cache_status)?;
 
     Ok(Response::ok(json)?.with_headers(headers))
 }
@@ -203,7 +264,7 @@ fn get_config(ctx: &RouteContext<()>) -> Result<Config> {
             .var("CACHE_TTL_SECONDS")?
             .to_string()
             .parse()
-            .unwrap_or(300),
+            .unwrap_or(900),
     })
 }
 
