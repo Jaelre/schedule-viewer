@@ -135,10 +135,10 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   return (
                     <div
                       key={`${person.id}-${day}`}
-                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium`}
+                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium overflow-hidden`}
                     >
                       {codes && codes.length > 0 ? (
-                        <div className="flex flex-col gap-1 items-center justify-center">
+                        <div className="flex flex-col gap-1 items-center justify-center min-w-0">
                           {codes.map((code, idx) => (
                             <span
                               key={`${person.id}-${day}-${idx}`}
