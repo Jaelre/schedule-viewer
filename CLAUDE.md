@@ -17,8 +17,8 @@ The Rust Worker is critical: it keeps the API token server-side and transforms u
 # Development with mock data
 npm run dev                 # → http://localhost:3000
 
-# Build for production
-npm run build              # Compiles TypeScript, builds Next.js
+# Build for production (static export to out/)
+npm run build              # Creates out/ directory for deployment
 
 # Type checking
 npm run build              # Also validates TypeScript
@@ -38,7 +38,7 @@ wrangler dev               # → http://localhost:8787
 wrangler secret put API_TOKEN
 
 # Deploy to Cloudflare
-wrangler publish
+wrangler deploy
 
 # Build only (without deploy)
 cargo build --release
@@ -180,23 +180,30 @@ wrangler secret put API_TOKEN  # Never commit this
 - UI would need unit selector component
 
 ### Technical Notes
-- **Next.js Config**: Standard build (not static export) - API routes need server
+- **Next.js Config**: Static export (`output: 'export'`) - builds to `out/` directory
 - **Tailwind**: Using v3 (v4 had PostCSS compatibility issues with Next.js 15)
 - **Mock API**: `/api/shifts` route is for local dev only; production uses Worker
 
 ## Deployment Checklist
 
 ### Frontend (Cloudflare Pages)
+**Option 1: GitHub Integration**
 1. Push to GitHub
 2. Connect repo in Cloudflare dashboard
-3. Build: `npm run build`, Output: `.next`
-4. Set env vars: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SHIFT_CODE_DICT`
+3. Build: `npm run build`, Output: `out` (not `.next`)
+4. Set env: `NEXT_PUBLIC_API_URL=https://worker-url/api`
+
+**Option 2: Manual Deploy**
+```bash
+npm run build
+npx wrangler pages deploy out --project-name schedule-viewer
+```
+**Critical**: Deploy `out/` directory (static export), not `.next/`
 
 ### Worker (Cloudflare)
-1. `cd worker && wrangler publish`
-2. Set secret: `wrangler secret put API_TOKEN`
-3. Verify route `/api/*` binds to worker
-4. Update frontend env to point to worker URL
+1. `cd worker && wrangler deploy`
+2. `wrangler secret put API_TOKEN`
+3. Frontend env: `NEXT_PUBLIC_API_URL=https://schedule-viewer-worker.your-account.workers.dev/api`
 
 ## Troubleshooting
 
