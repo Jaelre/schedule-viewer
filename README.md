@@ -116,7 +116,7 @@ Successful response:
 {
   "ym": "2025-10",
   "people": [
-    { "id": "33935", "name": "BELLONE Pietro" }
+    { "id": "33935", "name": "SURNAME Name" }
   ],
   "rows": [
     [
