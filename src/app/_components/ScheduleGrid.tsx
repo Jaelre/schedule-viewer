@@ -1,12 +1,68 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { getDaysInMonth, isWeekend, isItalianHoliday } from '@/lib/date'
 import { getShiftColor } from '@/lib/colors'
-import { getDoctorName } from '@/lib/doctor-names'
+import { getDoctorDisplayName } from '@/lib/doctor-names'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import type { Density } from './DensityToggle'
+
+const densityConfig: Record<
+  Density,
+  {
+    rowHeight: number
+    cellPadding: string
+    cellHeight: string
+    textSize: string
+    placeholderText: string
+    chipClass: string
+    chipGap: string
+  }
+> = {
+  comfortable: {
+    rowHeight: 64,
+    cellPadding: 'p-2',
+    cellHeight: 'h-16',
+    textSize: 'text-sm',
+    placeholderText: 'text-xs',
+    chipClass: 'px-2 py-0.5 text-xs',
+    chipGap: 'gap-1',
+  },
+  compact: {
+    rowHeight: 48,
+    cellPadding: 'p-1',
+    cellHeight: 'h-12',
+    textSize: 'text-xs',
+    placeholderText: 'text-xs',
+    chipClass: 'px-2 py-0.5 text-xs',
+    chipGap: 'gap-1',
+  },
+  'extra-compact': {
+    rowHeight: 40,
+    cellPadding: 'p-0',
+    cellHeight: 'h-10',
+    textSize: 'text-[0.7rem]',
+    placeholderText: 'text-[0.65rem]',
+    chipClass: 'px-1 py-[1px] text-[0.7rem] leading-tight',
+    chipGap: 'gap-0',
+  },
+}
+
+const densityHorizontalPadding: Record<Density, number> = {
+  comfortable: 16, // Tailwind p-2 -> 8px per side
+  compact: 8, // Tailwind p-1 -> 4px per side
+  'extra-compact': 0, // Minimal horizontal padding in ultra compact view
+}
+
+const defaultNameColumnWidths: Record<Density, number> = {
+  comfortable: 240,
+  compact: 210,
+  'extra-compact': 190,
+}
+
+const pseudonymPadding = 8 // Tailwind pl-2
+const widthBuffer = 4
 
 interface ScheduleGridProps {
   data: MonthShifts
@@ -18,26 +74,96 @@ interface ScheduleGridProps {
 export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   const parentRef = useRef<HTMLDivElement>(null)
   const { ym, people, rows } = data
+  const isExtraCompact = density === 'extra-compact'
+  const pseudonymSpacing = isExtraCompact ? 0 : pseudonymPadding
+  const gridGap = isExtraCompact ? 0 : 1
+  const [nameColumnWidth, setNameColumnWidth] = useState<string>(
+    `${defaultNameColumnWidths[density]}px`
+  )
 
   // Map people to their display names, filter out Unknown_, and sort by surname
   const peopleWithNames = useMemo(() => {
     return people
-      .map((person, index) => ({
-        ...person,
-        displayName: getDoctorName(person.id, person.name),
-        originalIndex: index
-      }))
+      .map((person, index) => {
+        const displayInfo = getDoctorDisplayName(person.id, person.name)
+
+        return {
+          ...person,
+          displayName: displayInfo.display,
+          resolvedName: displayInfo.name || displayInfo.display,
+          pseudonym: displayInfo.pseudonym,
+          originalIndex: index
+        }
+      })
       .filter(person => !person.displayName.startsWith('zzz_')) // Filter out Unknown_
       .sort((a, b) => a.displayName.localeCompare(b.displayName, 'it')) // Sort by surname
   }, [people])
 
   const daysInMonth = getDaysInMonth(ym)
 
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (peopleWithNames.length === 0) {
+      setNameColumnWidth(`${defaultNameColumnWidths[density]}px`)
+      return
+    }
+
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      setNameColumnWidth(`${defaultNameColumnWidths[density]}px`)
+      return
+    }
+
+    const probe = document.createElement('span')
+    probe.className = 'font-medium'
+    probe.style.position = 'absolute'
+    probe.style.visibility = 'hidden'
+    probe.style.whiteSpace = 'nowrap'
+    probe.textContent = 'M'
+    document.body.appendChild(probe)
+
+    const computedStyle = window.getComputedStyle(probe)
+    const fontWeight = computedStyle.fontWeight || '500'
+    const fontSize = computedStyle.fontSize || '16px'
+    const fontFamily = computedStyle.fontFamily || 'sans-serif'
+    document.body.removeChild(probe)
+
+    context.font = `${fontWeight} ${fontSize} ${fontFamily}`
+
+    let maxContentWidth = 0
+    for (const person of peopleWithNames) {
+      const baseWidth = context.measureText(person.resolvedName).width
+      const pseudonymWidth = person.pseudonym
+        ? context.measureText(person.pseudonym).width + pseudonymSpacing
+        : 0
+      const total = baseWidth + pseudonymWidth
+      if (total > maxContentWidth) {
+        maxContentWidth = total
+      }
+    }
+
+    const horizontalPadding = densityHorizontalPadding[density]
+    const fallbackWidth = defaultNameColumnWidths[density]
+    const computedWidth =
+      maxContentWidth > 0
+        ? Math.ceil(maxContentWidth + horizontalPadding + widthBuffer)
+        : fallbackWidth
+
+    setNameColumnWidth(`${computedWidth}px`)
+  }, [density, peopleWithNames, pseudonymSpacing])
+
   // Virtualize rows when there are many people (>40)
+  const densitySettings = densityConfig[density]
+
   const rowVirtualizer = useVirtualizer({
     count: peopleWithNames.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => (density === 'compact' ? 48 : 64),
+    estimateSize: () => densitySettings.rowHeight,
     overscan: 5,
   })
 
@@ -47,9 +173,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   }, [daysInMonth])
 
   // Cell size based on density
-  const cellPadding = density === 'compact' ? 'p-1' : 'p-2'
-  const cellHeight = density === 'compact' ? 'h-12' : 'h-16'
-  const textSize = density === 'compact' ? 'text-xs' : 'text-sm'
+  const { cellPadding, cellHeight, textSize, placeholderText, chipClass, chipGap } = densitySettings
 
   return (
     <div
@@ -65,10 +189,14 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
         <div
           className="schedule-grid sticky top-0 z-30 bg-gray-200"
           style={{
-            gridTemplateColumns: `minmax(200px, auto) repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+            gridTemplateColumns: `${nameColumnWidth} repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+            gap: `${gridGap}px`,
+            ...(isExtraCompact ? { background: 'transparent' } : {}),
           }}
         >
-          <div className={`${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b border-r border-gray-300 sticky left-0 z-40`}>
+          <div
+            className={`${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'} sticky left-0 z-40`}
+          >
             Nome
           </div>
           {dayHeaders.map((day) => {
@@ -80,7 +208,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                 key={`header-${day}`}
                 className={`${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
                   isHoliday ? 'bg-red-50 text-red-900' : isWeekendDay ? 'bg-blue-50 text-blue-900' : 'bg-white'
-                } border-b border-r border-gray-300`}
+                } border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
               >
                 {day}
               </div>
@@ -103,7 +231,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
             return (
               <div
                 key={virtualRow.key}
-                className="schedule-grid"
+                className="schedule-grid border-b border-gray-300"
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -111,12 +239,14 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   width: '100%',
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
-                  gridTemplateColumns: `minmax(200px, auto) repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+                  gridTemplateColumns: `${nameColumnWidth} repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+                  gap: `${gridGap}px`,
+                  ...(isExtraCompact ? { background: 'transparent' } : {}),
                 }}
               >
                 {/* Person Name Cell */}
                 <div
-                  className={`${cellPadding} ${cellHeight} flex items-center font-medium bg-white truncate border-r border-gray-300`}
+                  className={`${cellPadding} ${cellHeight} flex w-full items-center justify-between gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden`}
                   style={{
                     position: 'sticky',
                     left: 0,
@@ -124,7 +254,14 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   }}
                   title={person.displayName}
                 >
-                  {person.displayName}
+                  <span className="min-w-0 flex-1 truncate">
+                    {person.resolvedName}
+                  </span>
+                  {person.pseudonym && (
+                    <span className={`flex-none whitespace-nowrap ${isExtraCompact ? '' : 'pl-2'} text-right text-muted-foreground opacity-70`}>
+                      {person.pseudonym}
+                    </span>
+                  )}
                 </div>
 
                 {/* Shift Cells */}
@@ -140,14 +277,16 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   return (
                     <div
                       key={`${person.id}-${day}`}
-                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium overflow-hidden border-r border-gray-300`}
+                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium overflow-hidden ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
                     >
                       {codes && codes.length > 0 ? (
-                        <div className="flex flex-col gap-1 items-center justify-center min-w-0">
+                        <div
+                          className={`flex flex-col ${isExtraCompact ? 'items-stretch' : 'items-center'} justify-center min-w-0 ${chipGap}`}
+                        >
                           {codes.map((code, idx) => (
                             <span
                               key={`${person.id}-${day}-${idx}`}
-                              className="px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap"
+                              className={`${isExtraCompact ? 'w-full' : 'rounded'} font-semibold whitespace-nowrap ${chipClass}`}
                               style={{
                                 backgroundColor: getShiftColor(code).background,
                                 color: getShiftColor(code).text,
@@ -159,7 +298,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                           ))}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground text-xs">-</span>
+                        <span className={`text-muted-foreground ${placeholderText}`}>-</span>
                       )}
                     </div>
                   )
