@@ -18,13 +18,13 @@ export function DensityToggle({ onDensityChange, onLegendClick }: DensityToggleP
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 flex-wrap">
       <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Densità:</span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">Densità:</span>
         <div className="flex border border-border rounded overflow-hidden">
           <button
             onClick={() => handleToggle('compact')}
-            className={`px-2 py-1 text-xs transition-colors ${
+            className={`px-2 py-1 text-xs transition-colors whitespace-nowrap ${
               density === 'compact'
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-background hover:bg-accent'
@@ -36,7 +36,7 @@ export function DensityToggle({ onDensityChange, onLegendClick }: DensityToggleP
           </button>
           <button
             onClick={() => handleToggle('comfortable')}
-            className={`px-2 py-1 text-xs transition-colors ${
+            className={`px-2 py-1 text-xs transition-colors whitespace-nowrap ${
               density === 'comfortable'
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-background hover:bg-accent'
@@ -52,7 +52,7 @@ export function DensityToggle({ onDensityChange, onLegendClick }: DensityToggleP
       {onLegendClick && (
         <button
           onClick={onLegendClick}
-          className="px-2 py-1 text-xs border border-border rounded bg-background hover:bg-accent transition-colors"
+          className="px-2 py-1 text-xs border border-border rounded bg-background hover:bg-accent transition-colors whitespace-nowrap"
           aria-label="Mostra legenda"
         >
           Legenda

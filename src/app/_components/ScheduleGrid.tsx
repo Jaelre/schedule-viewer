@@ -116,7 +116,12 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
               >
                 {/* Person Name Cell */}
                 <div
-                  className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-white truncate`}
+                  className={`${cellPadding} ${cellHeight} flex items-center font-medium bg-white truncate border-r border-gray-300`}
+                  style={{
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 10
+                  }}
                   title={person.displayName}
                 >
                   {person.displayName}
@@ -135,7 +140,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   return (
                     <div
                       key={`${person.id}-${day}`}
-                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium overflow-hidden`}
+                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium overflow-hidden border-r border-gray-300`}
                     >
                       {codes && codes.length > 0 ? (
                         <div className="flex flex-col gap-1 items-center justify-center min-w-0">
