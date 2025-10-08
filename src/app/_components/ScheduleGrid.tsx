@@ -19,12 +19,16 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   const parentRef = useRef<HTMLDivElement>(null)
   const { ym, people, rows } = data
 
-  // Map people to their display names using the doctor names dictionary
+  // Map people to their display names, filter out Unknown_, and sort by surname
   const peopleWithNames = useMemo(() => {
-    return people.map(person => ({
-      ...person,
-      displayName: getDoctorName(person.id, person.name)
-    }))
+    return people
+      .map((person, index) => ({
+        ...person,
+        displayName: getDoctorName(person.id, person.name),
+        originalIndex: index
+      }))
+      .filter(person => !person.displayName.startsWith('zzz_')) // Filter out Unknown_
+      .sort((a, b) => a.displayName.localeCompare(b.displayName, 'it')) // Sort by surname
   }, [people])
 
   const daysInMonth = getDaysInMonth(ym)
@@ -94,7 +98,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const person = peopleWithNames[virtualRow.index]
-            const personRow = rows[virtualRow.index]
+            const personRow = rows[person.originalIndex]
 
             return (
               <div
@@ -112,7 +116,8 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
               >
                 {/* Person Name Cell */}
                 <div
-                  className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-white border-b border-r border-gray-300 truncate`}
+                  className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-white border-r border-gray-300 truncate`}
+                  style={{ borderBottom: '1px solid rgb(209 213 219)' }}
                   title={person.displayName}
                 >
                   {person.displayName}
@@ -131,14 +136,15 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   return (
                     <div
                       key={`${person.id}-${day}`}
-                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium border-b border-r border-gray-300`}
+                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium border-r border-gray-300 overflow-hidden`}
+                      style={{ borderBottom: '1px solid rgb(209 213 219)' }}
                     >
                       {codes && codes.length > 0 ? (
                         <div className="flex flex-col gap-1 w-full items-center">
                           {codes.map((code, idx) => (
                             <div
                               key={`${person.id}-${day}-${idx}`}
-                              className="px-2 py-1 rounded text-xs font-semibold w-fit min-w-[2rem] text-center"
+                              className="px-2 py-1 rounded text-xs font-semibold w-fit min-w-[2rem] text-center max-w-full truncate"
                               style={{
                                 backgroundColor: getShiftColor(code).background,
                                 color: getShiftColor(code).text,
