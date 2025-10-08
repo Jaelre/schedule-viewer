@@ -116,8 +116,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
               >
                 {/* Person Name Cell */}
                 <div
-                  className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-white border-r border-gray-300 truncate`}
-                  style={{ borderBottom: '1px solid rgb(209 213 219)' }}
+                  className={`grid-first-col ${cellPadding} ${cellHeight} flex items-center font-medium bg-white truncate`}
                   title={person.displayName}
                 >
                   {person.displayName}
@@ -136,15 +135,14 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   return (
                     <div
                       key={`${person.id}-${day}`}
-                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium border-r border-gray-300 overflow-hidden`}
-                      style={{ borderBottom: '1px solid rgb(209 213 219)' }}
+                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium`}
                     >
                       {codes && codes.length > 0 ? (
-                        <div className="flex flex-col gap-1 w-full items-center">
+                        <div className="flex flex-col gap-1 items-center justify-center">
                           {codes.map((code, idx) => (
-                            <div
+                            <span
                               key={`${person.id}-${day}-${idx}`}
-                              className="px-2 py-1 rounded text-xs font-semibold text-center max-w-full"
+                              className="px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap"
                               style={{
                                 backgroundColor: getShiftColor(code).background,
                                 color: getShiftColor(code).text,
@@ -152,7 +150,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                               title={code}
                             >
                               {code}
-                            </div>
+                            </span>
                           ))}
                         </div>
                       ) : (
