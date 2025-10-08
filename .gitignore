@@ -73,3 +73,7 @@ src/lib/shift-colors.json
 **/sensitive/
 **/confidential/
 claudedocs/
+
+# Local AI tooling artifacts
+.claude/
+.wrangler/
