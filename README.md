@@ -25,7 +25,8 @@ schedule-viewer/
 │   └── lib/                # API client, date helpers, colours, doctor dictionary
 ├── worker/                 # Rust Cloudflare Worker + wrangler config
 ├── docs/                   # ADRs, API reference snapshots, sensitive-file guidance
-├── icons/                  # Favicons and manifest assets
+├── public/
+│   └── icons/              # Favicons and manifest assets
 ├── .api-samples/           # Captured MetricAid JSON for reference/testing
 ├── .env.example            # Frontend environment template
 ├── package.json
