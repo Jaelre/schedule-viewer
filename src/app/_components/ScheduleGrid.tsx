@@ -4,7 +4,7 @@ import { useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { getDaysInMonth, isWeekend, isItalianHoliday } from '@/lib/date'
 import { getShiftColor } from '@/lib/colors'
-import { getDoctorName } from '@/lib/doctor-names'
+import { getDoctorDisplayName } from '@/lib/doctor-names'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import type { Density } from './DensityToggle'
 
@@ -63,11 +63,17 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   // Map people to their display names, filter out Unknown_, and sort by surname
   const peopleWithNames = useMemo(() => {
     return people
-      .map((person, index) => ({
-        ...person,
-        displayName: getDoctorName(person.id, person.name),
-        originalIndex: index
-      }))
+      .map((person, index) => {
+        const displayInfo = getDoctorDisplayName(person.id, person.name)
+
+        return {
+          ...person,
+          displayName: displayInfo.display,
+          resolvedName: displayInfo.name || displayInfo.display,
+          pseudonym: displayInfo.pseudonym,
+          originalIndex: index
+        }
+      })
       .filter(person => !person.displayName.startsWith('zzz_')) // Filter out Unknown_
       .sort((a, b) => a.displayName.localeCompare(b.displayName, 'it')) // Sort by surname
   }, [people])
@@ -157,7 +163,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
               >
                 {/* Person Name Cell */}
                 <div
-                  className={`${cellPadding} ${cellHeight} flex items-center font-medium bg-white truncate border-r border-gray-300`}
+                  className={`${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-white border-r border-gray-300 overflow-hidden`}
                   style={{
                     position: 'sticky',
                     left: 0,
@@ -165,7 +171,14 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   }}
                   title={person.displayName}
                 >
-                  {person.displayName}
+                  <span className="min-w-0 truncate">
+                    {person.resolvedName}
+                  </span>
+                  {person.pseudonym && (
+                    <span className="ml-auto shrink-0 pl-2 text-right text-muted-foreground opacity-70">
+                      {person.pseudonym}
+                    </span>
+                  )}
                 </div>
 
                 {/* Shift Cells */}
