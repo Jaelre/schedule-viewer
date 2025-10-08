@@ -7,6 +7,52 @@ export interface DoctorNamesDict {
 
 const doctorNames: DoctorNamesDict = doctorNamesData
 
+function extractPseudonym(apiName?: string): string | undefined {
+  if (!apiName) {
+    return undefined
+  }
+
+  const trimmed = apiName.trim()
+  if (!trimmed) {
+    return undefined
+  }
+
+  const parts = trimmed.split(/\s+/)
+  if (parts.length === 0) {
+    return undefined
+  }
+
+  const candidate = parts[parts.length - 1]
+  if (!/^\d+$/.test(candidate)) {
+    return undefined
+  }
+
+  return candidate
+}
+
+function appendPseudonym(name: string, apiName?: string): string {
+  const trimmedName = name.trim()
+  const pseudonym = extractPseudonym(apiName)
+
+  if (!trimmedName) {
+    return pseudonym ?? ''
+  }
+
+  if (!pseudonym) {
+    return trimmedName
+  }
+
+  if (
+    trimmedName === pseudonym ||
+    trimmedName.endsWith(` ${pseudonym}`) ||
+    trimmedName.endsWith(`(${pseudonym})`)
+  ) {
+    return trimmedName
+  }
+
+  return `${trimmedName} ${pseudonym}`
+}
+
 /**
  * Get the real name for a doctor by searching through the names dictionary
  * @param id - The doctor's ID (as string or number)
@@ -18,11 +64,11 @@ export function getDoctorName(id: string | number, apiName?: string): string {
 
   // First try direct ID or name lookup
   if (doctorNames.names[idStr]) {
-    return doctorNames.names[idStr]
+    return appendPseudonym(doctorNames.names[idStr], apiName)
   }
 
   if (apiName && doctorNames.names[apiName]) {
-    return doctorNames.names[apiName]
+    return appendPseudonym(doctorNames.names[apiName], apiName)
   }
 
   // If API name provided, search for substring match (case insensitive)
@@ -32,7 +78,7 @@ export function getDoctorName(id: string | number, apiName?: string): string {
     // First, check if the API name is used as a key in the dictionary
     for (const [key, fullName] of Object.entries(doctorNames.names)) {
       if (key.toLowerCase() === searchTerm) {
-        return fullName
+        return appendPseudonym(fullName, apiName)
       }
     }
 
@@ -47,13 +93,14 @@ export function getDoctorName(id: string | number, apiName?: string): string {
 
       // Match by last name
       if (lastName === searchLastName || fullNameLower.includes(searchLastName)) {
-        return fullName
+        return appendPseudonym(fullName, apiName)
       }
     }
   }
 
   // Fallback to API name or ID
-  return apiName || idStr
+  const fallbackName = apiName && apiName.trim().length > 0 ? apiName : idStr
+  return appendPseudonym(fallbackName, apiName)
 }
 
 /**
