@@ -1,273 +1,143 @@
 # Monthly Shift Viewer
 
-A production-ready web application for visualizing monthly work schedules. Built with Next.js, React, and a Rust Cloudflare Worker backend.
+Monthly schedule explorer for emergency department shifts. The UI is built with Next.js 15 + React 19, while a Rust Cloudflare Worker signs requests to the MetricAid API, normalises the payload and caches results.
 
-## Features
+## Highlights
+- Virtualised month grid renders 100+ clinicians smoothly, with multi-shift-per-day support and density toggle.
+- Italian locale by default (Europe/Rome timezone, Italian labels and holidays).
+- Deterministic, accessible colour palette with overrides in `src/lib/shift-colors.json`.
+- Configurable dictionary for shift labels via `NEXT_PUBLIC_SHIFT_CODE_DICT` and doctor name mapping via `src/lib/doctor-names.json`.
+- Cloudflare Worker proxies all data access, injects secrets, retries upstream failures and keeps a short-lived in-memory cache.
+- Client refreshes data every 10 minutes and surfaces clear loading/error states.
 
-- 📅 **Monthly Calendar View**: Grid layout showing shifts for all personnel
-- 🔒 **Secure API Proxy**: Rust Cloudflare Worker keeps API tokens server-side
-- ⚡ **High Performance**: Row virtualization supports 100+ people smoothly
-- 🎨 **Accessible Design**: WCAG AA compliant with deterministic colors
-- 🇮🇹 **Italian Locale**: Europe/Rome timezone with Italian holidays
-- 📱 **Responsive**: Works on desktop and mobile devices
-- 🔄 **Auto-Refresh**: Background data updates every 10 minutes
+## Architecture at a Glance
+- **Frontend**: Next.js App Router (static export capable) with Tailwind CSS and shadcn/ui primitives, TanStack Query for data fetching/cache and TanStack Virtual for row virtualisation.
+- **Backend**: Rust worker deployed with Cloudflare Wrangler. It validates `ym` parameters, expands month bounds, talks to MetricAid using the `API_TOKEN`, merges multiple shifts per day and exposes a CORS-friendly `/api/shifts` endpoint.
+- **Data flow**: Browser → Worker `/api/shifts?ym=YYYY-MM` → MetricAid `public/schedule` endpoint. Successful responses are cached for `CACHE_TTL_SECONDS` and returned alongside an `X-Cache-Status` header.
+- **Docs**: Architecture decisions live in `docs/adrs`, with upstream API captures inside `.api-samples` and private operational notes under `docs/private/`.
 
-## Tech Stack
-
-### Frontend
-- **Next.js 15** (App Router, Static Export)
-- **React 19** with TypeScript
-- **Tailwind CSS** + shadcn/ui
-- **TanStack Query** (React Query)
-- **TanStack Virtual** (row virtualization)
-
-### Backend
-- **Rust** Cloudflare Worker
-- **worker-rs** crate for Workers runtime
-- **serde** for JSON serialization
-
-## Project Structure
+## Repository Layout
 
 ```
 schedule-viewer/
 ├── src/
-│   ├── app/
-│   │   ├── _components/       # React components
-│   │   ├── api/shifts/        # Mock API for local dev
-│   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   └── providers.tsx
-│   └── lib/
-│       ├── api-client.ts      # React Query hooks
-│       ├── colors.ts          # Color generation
-│       ├── date.ts            # Rome timezone utilities
-│       └── types.ts           # TypeScript types
-├── worker/                    # Rust Cloudflare Worker
-│   ├── src/
-│   │   ├── lib.rs            # Main worker logic
-│   │   └── utils.rs
-│   ├── Cargo.toml
-│   └── wrangler.toml
-├── docs/
-│   ├── ARCHITECTURE.md        # Architecture decisions
-│   └── project-instructions.md
+│   ├── app/                # Next.js entrypoint, layout and UI components
+│   └── lib/                # API client, date helpers, colours, doctor dictionary
+├── worker/                 # Rust Cloudflare Worker + wrangler config
+├── docs/                   # ADRs, API reference snapshots, sensitive-file guidance
+├── icons/                  # Favicons and manifest assets
+├── .api-samples/           # Captured MetricAid JSON for reference/testing
+├── .env.example            # Frontend environment template
 ├── package.json
-├── tsconfig.json
 └── README.md
 ```
 
-## Local Development
+## Prerequisites
+- Node.js 18+ and npm.
+- Rust 1.70+ with the `wasm32-unknown-unknown` target (`rustup target add wasm32-unknown-unknown`).
+- Cloudflare Wrangler CLI (`npm install -g wrangler`).
+- A MetricAid API token for production/real-data usage.
 
-### Prerequisites
+## Quick Start
 
-- **Node.js** 18+ (npm or pnpm)
-- **Rust** 1.70+ (for Worker development)
-- **wrangler** (Cloudflare CLI)
+1. Clone & install:
 
-### Setup
-
-1. **Clone the repository**
    ```bash
    git clone https://github.com/Jaelre/schedule-viewer.git
    cd schedule-viewer
-   ```
-
-2. **Install frontend dependencies**
-   ```bash
    npm install
    ```
 
-3. **Set up environment variables**
+2. Configure the frontend environment (used at build and runtime):
+
    ```bash
    cp .env.example .env.local
-   # Edit .env.local with your configuration
+   # optionally set NEXT_PUBLIC_API_URL to point at a local/remote Worker
    ```
 
-4. **Install Rust toolchain** (for Worker)
+   Populate `NEXT_PUBLIC_SHIFT_CODE_DICT` if you want custom labels surfaced in the UI legend.
+
+3. (Optional) adjust local dictionaries:
+   - Edit `src/lib/doctor-names.json` to map MetricAid IDs or pseudonyms to the names you want to display.
+   - Edit `src/lib/shift-colors.json` to fine-tune colour contrast per shift code.
+
+4. Start the Next.js dev server:
+
    ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   rustup target add wasm32-unknown-unknown
+   npm run dev
    ```
 
-5. **Install wrangler**
-   ```bash
-   npm install -g wrangler
-   ```
+   The UI opens at http://localhost:3000. If `NEXT_PUBLIC_API_URL` is unset it falls back to `/api`, so configure it to match the Worker endpoint when running against live data.
 
-6. **Set up Worker secrets** (for real API)
+## Running the Cloudflare Worker Locally
+
+1. Install dependencies (Rust, wrangler) and ensure the wasm target is added.
+2. Seed secrets:
+
    ```bash
    cd worker
    cp .dev.vars.example .dev.vars
-   # Edit .dev.vars and add your MetricAid API token
+   # add API_TOKEN=<your_metricaid_token>
    ```
 
-### Running Locally
+3. Run the Worker in dev mode:
 
-#### Frontend with Mock Data
+   ```bash
+   wrangler dev
+   ```
 
-```bash
-npm run dev
-```
-
-Visit http://localhost:3000
-
-The frontend will use the mock API endpoint at `/api/shifts` for local development.
-
-#### Rust Worker (Development)
-
-```bash
-cd worker
-wrangler dev
-```
-
-The worker will run at http://localhost:8787
-
-To test the worker locally with the real MetricAid API:
-
-```bash
-cd worker
-# Set the API token
-wrangler secret put API_TOKEN
-# Enter your token when prompted
-
-# Run dev server
-wrangler dev
-```
-
-Then update frontend `.env.local`:
-```
-NEXT_PUBLIC_API_URL=http://localhost:8787/api
-```
+   Wrangler serves the Worker at http://localhost:8787. When running the frontend locally against it, set `NEXT_PUBLIC_API_URL=http://localhost:8787/api` in `.env.local` and restart `npm run dev`.
 
 ## Deployment
 
-### Cloudflare Pages (Frontend)
+- **Cloudflare Worker**:
 
-#### Option 1: GitHub Integration (Recommended)
+  ```bash
+  cd worker
+  wrangler deploy
+  wrangler secret put API_TOKEN   # supply the MetricAid token when prompted
+  ```
 
-1. **Push to GitHub**
-   ```bash
-   git push origin main
-   ```
+  The default `wrangler.toml` exposes configurable `API_BASE_URL`, `API_TIMEOUT_MS` and `CACHE_TTL_SECONDS` variables.
 
-2. **Connect in Cloudflare Pages dashboard**
-   - Build command: `npm run build`
-   - Build output directory: `out` (Next.js static export)
-   - Framework preset: Next.js
-
-3. **Configure environment variables** in Cloudflare Pages:
-   ```
-   NEXT_PUBLIC_API_URL=https://schedule-viewer-worker.your-account.workers.dev/api
-   NEXT_PUBLIC_SHIFT_CODE_DICT={"D":{"label":"Day"},...}
-   ```
-
-#### Option 2: Manual Deploy with Wrangler
-
-1. **Build the static export**
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy to Cloudflare Pages**
-   ```bash
-   npx wrangler pages deploy out --project-name schedule-viewer
-   ```
-
-   **IMPORTANT**: Deploy `out/` directory, not `.next/` (with `output: 'export'` in next.config.ts)
-
-### Cloudflare Worker (Backend)
-
-1. **Deploy the Worker**
-   ```bash
-   cd worker
-   wrangler deploy
-   ```
-
-2. **Set environment secrets**
-   ```bash
-   wrangler secret put API_TOKEN
-   # Enter your MetricAid API token when prompted
-   ```
-
-3. **Configure wrangler.toml variables** (already in file):
-   ```toml
-   [vars]
-   API_BASE_URL = "https://api.metricaid.com"
-   API_TIMEOUT_MS = "8000"
-   CACHE_TTL_SECONDS = "300"
-   ```
-
-4. **Update frontend** to use Worker URL:
-   - Create `.env.production` with:
-     ```bash
-     NEXT_PUBLIC_API_URL=https://schedule-viewer-worker.your-account.workers.dev/api
-     ```
-   - Or set in Cloudflare Pages dashboard environment variables
-
-### Routing Setup
-
-The Worker handles `/api/*` routes. Configure routing in one of two ways:
-
-**Option 1: Cloudflare Functions** (Recommended)
-- Worker automatically handles `/api/*` when deployed
-- No additional configuration needed
-
-**Option 2: Manual Route**
-- In Cloudflare Workers dashboard
-- Add route: `your-domain.com/api/*`
-- Point to `schedule-viewer-worker`
-
-## Environment Variables
-
-### Frontend (.env.local)
-
-```bash
-# Display name for the unit
-NEXT_PUBLIC_DEFAULT_UNIT_NAME="Emergency Department"
-
-# Shift code labels (JSON)
-NEXT_PUBLIC_SHIFT_CODE_DICT='{"D":{"label":"Day"},"N":{"label":"Night"},"O":{"label":"Off"}}'
-
-# Worker URL (production only)
-NEXT_PUBLIC_API_URL=https://your-worker.workers.dev/api
-```
-
-### Worker (wrangler.toml + secrets)
-
-**Public variables** (wrangler.toml):
-```toml
-API_BASE_URL = "https://api.metricaid.com/api/v1"
-API_TIMEOUT_MS = "8000"
-CACHE_TTL_SECONDS = "300"
-```
-
-**Secret** (via wrangler CLI):
-```bash
-wrangler secret put API_TOKEN
-```
+- **Cloudflare Pages (frontend)**:
+  - Build command: `npm run build` (Next.js static export writes to `out/`).
+  - Output directory: `out`.
+  - Environments need the same variables as `.env.local` (e.g. `NEXT_PUBLIC_DEFAULT_UNIT_NAME`, `NEXT_PUBLIC_SHIFT_CODE_DICT`, `NEXT_PUBLIC_API_URL` pointing at the Worker).
 
 ## API Contract
 
-### Worker Endpoint
+`GET /api/shifts?ym=YYYY-MM`
 
-**GET /api/shifts?ym=YYYY-MM**
+Successful response:
 
-**Response**:
 ```json
 {
   "ym": "2025-10",
   "people": [
-    { "id": "1", "name": "Mario Rossi" }
+    { "id": "33935", "name": "BELLONE Pietro" }
   ],
   "rows": [
-    ["D", "D", "N", "N", "O", ...]
+    [
+      ["D"],
+      ["D"],
+      ["N"],
+      null,
+      ["O"]
+    ]
   ],
-  "codes": ["D", "N", "O"]
+  "codes": ["D", "N", "O"],
+  "shiftNames": {
+    "D": "D 8:00 - 14:00",
+    "N": "N 20:00 - 08:00"
+  }
 }
 ```
 
-**Error Response**:
+Each `rows[i][day]` entry is either `null` (no assignment) or an array of one or more shift codes for that person on that day.
+
+Error envelope:
+
 ```json
 {
   "error": {
@@ -277,91 +147,22 @@ wrangler secret put API_TOKEN
 }
 ```
 
-## Performance
-
-- **Target**: <300ms render time with 100 people
-- **Optimization**: Row virtualization (only renders visible rows)
-- **Caching**: 5-minute Worker cache + 10-minute client cache
-- **Bundle**: Code splitting for optimal load times
-
-## Accessibility
-
-- ✅ Semantic HTML structure
-- ✅ ARIA labels and roles
-- ✅ Keyboard navigation support
-- ✅ WCAG AA color contrast
-- ✅ Screen reader friendly
-
-## Browser Support
-
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Mobile browsers (iOS Safari, Chrome Mobile)
-
-## Development Notes
-
-### TODO: Multi-Unit Support (V2)
-
-Current version uses a single unit via environment variable. Future enhancement:
-- Add `?unitId=XXX` to URL routing
-- Support multiple unit tokens in Worker
-- See `docs/ARCHITECTURE.md` for details
-
-### Locale Settings
-
-- **Timezone**: Europe/Rome (UTC+1/+2)
-- **Locale**: it-IT
-- **First day of week**: Monday
-- **Date format**: DD/MM/YYYY
-
-### Italian Public Holidays
-
-Implemented in `src/lib/date.ts`:
-- Fixed dates (New Year, Christmas, etc.)
-- Easter-based (Easter Sunday, Easter Monday)
-- Civil holidays (April 25, May 1, June 2, etc.)
-
-## Testing
-
-```bash
-# Type checking
-npm run build
-
-# Lint
-npm run lint
-```
+## Tooling & Scripts
+- `npm run dev` – Next.js dev server.
+- `npm run build` – Type checking and production build.
+- `npm run lint` – Next.js / ESLint checks.
+- Worker builds are handled automatically by `wrangler` via `worker/build`.
 
 ## Troubleshooting
-
-### "API Token not found"
-- Run `wrangler secret put API_TOKEN` in worker directory
-- Verify token is correct in Cloudflare dashboard
-
-### "Invalid ym format"
-- Ensure URL has `?ym=YYYY-MM` format
-- Check year is between 2000-2100, month 01-12
-
-### Worker not receiving requests
-- Verify `NEXT_PUBLIC_API_URL` points to correct Worker URL
-- Check Cloudflare Pages routing configuration
-- Test Worker directly: `https://your-worker.workers.dev/api/shifts?ym=2025-10`
-
-### Build errors
-- Clear `.next` and `node_modules`, reinstall: `rm -rf .next node_modules && npm install`
-- Check Node.js version: `node --version` (should be 18+)
+- **Missing API token**: run `wrangler secret put API_TOKEN` in `worker/` and redeploy/restart.
+- **Frontend shows empty grid**: verify the Worker URL in `.env.local` and check the browser console for errors from `/api/shifts`.
+- **Upstream timeouts**: consider raising `API_TIMEOUT_MS` in `worker/wrangler.toml`; the Worker currently retries twice before surfacing `UPSTREAM_TIMEOUT`.
+- **Styling issues after colour changes**: ensure HSL values in `src/lib/shift-colors.json` maintain sufficient contrast; the fallback generator covers undefined codes.
 
 ## License
 
-ISC
+ISC License. See `LICENSE` for details.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## Support
-
-For issues and questions, please open an issue on GitHub.
+Fork, branch, implement, open a PR. Issues and feature proposals are welcome in the tracker.
