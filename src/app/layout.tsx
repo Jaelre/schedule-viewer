@@ -6,7 +6,7 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Monthly Shift Viewer',
+  title: 'Turni PS Policlinico',
   description: 'Visualizzazione turni mensili',
   icons: {
     icon: [
