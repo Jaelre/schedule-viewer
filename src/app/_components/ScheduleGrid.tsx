@@ -8,6 +8,47 @@ import { getDoctorName } from '@/lib/doctor-names'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import type { Density } from './DensityToggle'
 
+const densityConfig: Record<
+  Density,
+  {
+    rowHeight: number
+    cellPadding: string
+    cellHeight: string
+    textSize: string
+    placeholderText: string
+    chipClass: string
+    chipGap: string
+  }
+> = {
+  comfortable: {
+    rowHeight: 64,
+    cellPadding: 'p-2',
+    cellHeight: 'h-16',
+    textSize: 'text-sm',
+    placeholderText: 'text-xs',
+    chipClass: 'px-2 py-0.5 text-xs',
+    chipGap: 'gap-1',
+  },
+  compact: {
+    rowHeight: 48,
+    cellPadding: 'p-1',
+    cellHeight: 'h-12',
+    textSize: 'text-xs',
+    placeholderText: 'text-xs',
+    chipClass: 'px-2 py-0.5 text-xs',
+    chipGap: 'gap-1',
+  },
+  'extra-compact': {
+    rowHeight: 40,
+    cellPadding: 'px-1 py-0.5',
+    cellHeight: 'h-10',
+    textSize: 'text-[0.7rem]',
+    placeholderText: 'text-[0.65rem]',
+    chipClass: 'px-1.5 py-0.5 text-[0.7rem]',
+    chipGap: 'gap-0.5',
+  },
+}
+
 interface ScheduleGridProps {
   data: MonthShifts
   density: Density
@@ -34,10 +75,12 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   const daysInMonth = getDaysInMonth(ym)
 
   // Virtualize rows when there are many people (>40)
+  const densitySettings = densityConfig[density]
+
   const rowVirtualizer = useVirtualizer({
     count: peopleWithNames.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => (density === 'compact' ? 48 : 64),
+    estimateSize: () => densitySettings.rowHeight,
     overscan: 5,
   })
 
@@ -47,9 +90,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   }, [daysInMonth])
 
   // Cell size based on density
-  const cellPadding = density === 'compact' ? 'p-1' : 'p-2'
-  const cellHeight = density === 'compact' ? 'h-12' : 'h-16'
-  const textSize = density === 'compact' ? 'text-xs' : 'text-sm'
+  const { cellPadding, cellHeight, textSize, placeholderText, chipClass, chipGap } = densitySettings
 
   return (
     <div
@@ -143,11 +184,11 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                       className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium overflow-hidden border-r border-gray-300`}
                     >
                       {codes && codes.length > 0 ? (
-                        <div className="flex flex-col gap-1 items-center justify-center min-w-0">
+                        <div className={`flex flex-col items-center justify-center min-w-0 ${chipGap}`}>
                           {codes.map((code, idx) => (
                             <span
                               key={`${person.id}-${day}-${idx}`}
-                              className="px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap"
+                              className={`rounded font-semibold whitespace-nowrap ${chipClass}`}
                               style={{
                                 backgroundColor: getShiftColor(code).background,
                                 color: getShiftColor(code).text,
@@ -159,7 +200,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                           ))}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground text-xs">-</span>
+                        <span className={`text-muted-foreground ${placeholderText}`}>-</span>
                       )}
                     </div>
                   )

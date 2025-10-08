@@ -17,7 +17,7 @@ function PageContent() {
   // Default to current month if no ym param or invalid
   const currentYM = ymParam && isValidYM(ymParam) ? ymParam : getCurrentYM()
 
-  const [density, setDensity] = useState<Density>('comfortable')
+  const [density, setDensity] = useState<Density>('compact')
   const [isLegendOpen, setIsLegendOpen] = useState(false)
 
   const { data, isLoading, error, refetch } = useMonthShifts(currentYM)

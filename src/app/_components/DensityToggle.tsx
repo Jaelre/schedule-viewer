@@ -2,17 +2,25 @@
 
 import { useState } from 'react'
 
-export type Density = 'compact' | 'comfortable'
+export type Density = 'extra-compact' | 'compact' | 'comfortable'
 
 interface DensityToggleProps {
   onDensityChange: (density: Density) => void
   onLegendClick?: () => void
 }
 
+const densityOptions: Array<{ value: Density; label: string; ariaLabel: string }> = [
+  { value: 'extra-compact', label: 'Ultra compatta', ariaLabel: 'Visualizzazione ultra compatta' },
+  { value: 'compact', label: 'Compatta', ariaLabel: 'Visualizzazione compatta' },
+  { value: 'comfortable', label: 'Confortevole', ariaLabel: 'Visualizzazione confortevole' },
+]
+
 export function DensityToggle({ onDensityChange, onLegendClick }: DensityToggleProps) {
-  const [density, setDensity] = useState<Density>('comfortable')
+  const [density, setDensity] = useState<Density>('compact')
 
   const handleToggle = (newDensity: Density) => {
+    if (newDensity === density) return
+
     setDensity(newDensity)
     onDensityChange(newDensity)
   }
@@ -22,30 +30,21 @@ export function DensityToggle({ onDensityChange, onLegendClick }: DensityToggleP
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground whitespace-nowrap">Densità:</span>
         <div className="flex border border-border rounded overflow-hidden">
-          <button
-            onClick={() => handleToggle('compact')}
-            className={`px-2 py-1 text-xs transition-colors whitespace-nowrap ${
-              density === 'compact'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-background hover:bg-accent'
-            }`}
-            aria-label="Visualizzazione compatta"
-            aria-pressed={density === 'compact'}
-          >
-            Compatta
-          </button>
-          <button
-            onClick={() => handleToggle('comfortable')}
-            className={`px-2 py-1 text-xs transition-colors whitespace-nowrap ${
-              density === 'comfortable'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-background hover:bg-accent'
-            }`}
-            aria-label="Visualizzazione confortevole"
-            aria-pressed={density === 'comfortable'}
-          >
-            Confortevole
-          </button>
+          {densityOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => handleToggle(option.value)}
+              className={`px-2 py-1 text-xs transition-colors whitespace-nowrap ${
+                density === option.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-background hover:bg-accent'
+              }`}
+              aria-label={option.ariaLabel}
+              aria-pressed={density === option.value}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 
