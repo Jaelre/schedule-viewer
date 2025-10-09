@@ -586,12 +586,10 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
     headers.set("Access-Control-Allow-Credentials", "true")?;
 
     // Set cookie: 10 years = 315360000 seconds
-    // Note: Removed HttpOnly so JavaScript can read it for client-side gate check
-    // Removed Secure for localhost development (add back in production with HTTPS)
-    // production:
-    let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; HttpOnly; SameSite=None; Secure";
-    // dev:
-    // let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; SameSite=Lax";
+    // Using SameSite=Lax for cross-domain compatibility
+    // This works because PasswordGate reloads the page after authentication (line 87)
+    // The cookie is sent on the top-level navigation after reload
+    let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; HttpOnly; SameSite=Lax; Secure";
     headers.set("Set-Cookie", cookie)?;
 
     Ok(Response::ok(json)?.with_headers(headers))
