@@ -11,7 +11,21 @@ import { ScheduleGrid } from './_components/ScheduleGrid'
 import { LegendModal } from './_components/LegendModal'
 
 const ACCESS_COOKIE = 'schedule_viewer_access'
-const ACCESS_PASSWORD = 'Policlinico1'
+const ACCESS_PASSWORD_HASH = '608ea934b1703c8eece4951a48c86bcf6e7f262636eaf62b550ffaa5bf8b6260'
+
+async function hashPassword(candidate: string): Promise<string | null> {
+  if (typeof window === 'undefined' || !window.crypto?.subtle) {
+    return null
+  }
+
+  const encoder = new TextEncoder()
+  const data = encoder.encode(candidate)
+  const digest = await window.crypto.subtle.digest('SHA-256', data)
+
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
 
 function hasAccessCookie() {
   if (typeof document === 'undefined') {
@@ -41,21 +55,46 @@ function PasswordGate({ children }: { children: ReactNode }) {
   const [error, setError] = useState('')
   const [hasAccess, setHasAccess] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     setHasAccess(hasAccessCookie())
     setIsChecking(false)
   }, [])
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (password.trim() === ACCESS_PASSWORD) {
-      persistAccessCookie()
-      setHasAccess(true)
-      setError('')
-    } else {
+    const trimmedPassword = password.trim()
+    if (!trimmedPassword) {
+      setError('Inserisci la password.')
+      return
+    }
+
+    setIsSubmitting(true)
+    setError('')
+
+    try {
+      const hashedInput = await hashPassword(trimmedPassword)
+
+      if (!hashedInput) {
+        setError('Impossibile verificare la password in questo browser.')
+        return
+      }
+
+      if (hashedInput === ACCESS_PASSWORD_HASH) {
+        persistAccessCookie()
+        setHasAccess(true)
+        setError('')
+        return
+      }
+
       setError('Password non valida. Riprova.')
+    } catch (hashError) {
+      console.error('Password hashing failed', hashError)
+      setError('Si è verificato un errore nella verifica della password.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -86,14 +125,16 @@ function PasswordGate({ children }: { children: ReactNode }) {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder="Inserisci password"
                 autoComplete="current-password"
+                disabled={isSubmitting}
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-70"
+              disabled={isSubmitting}
             >
-              Conferma
+              {isSubmitting ? 'Verifica…' : 'Conferma'}
             </button>
           </form>
         </div>
