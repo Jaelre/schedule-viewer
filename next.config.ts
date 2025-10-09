@@ -2,9 +2,9 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  output: 'export',
-  // Note: For Cloudflare Pages deployment, you'll use the Worker for API routes
-  // Local development uses Next.js API routes
+  // Note: Changed from 'export' to support server-side password gate
+  // Deploy to Cloudflare Pages with @cloudflare/next-on-pages
+  // Worker still handles /api/shifts endpoint
 }
 
 export default nextConfig
