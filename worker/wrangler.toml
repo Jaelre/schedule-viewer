@@ -8,7 +8,7 @@ command = "cargo install -q worker-build && worker-build --release"
 [vars]
 API_BASE_URL = "https://api.metricaid.com"
 API_TIMEOUT_MS = "8000"
-CACHE_TTL_SECONDS = "300"
+CACHE_TTL_SECONDS = "900"
 
 # API_TOKEN should be set as a secret via:
 # wrangler secret put API_TOKEN

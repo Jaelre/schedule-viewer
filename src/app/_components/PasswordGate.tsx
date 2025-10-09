@@ -6,11 +6,6 @@ interface PasswordGateProps {
   children: ReactNode
 }
 
-function getCookie(name: string): boolean {
-  if (typeof document === 'undefined') return false
-  return document.cookie.split('; ').some((cookie) => cookie.startsWith(`${name}=`))
-}
-
 export function PasswordGate({ children }: PasswordGateProps) {
   const [hasAccess, setHasAccess] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
@@ -19,10 +14,41 @@ export function PasswordGate({ children }: PasswordGateProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    // Check for cookie on mount
-    const hasCookie = getCookie('schedule_viewer_access')
-    setHasAccess(hasCookie)
-    setIsChecking(false)
+    // Check if we have a token in localStorage
+    const checkAccess = async () => {
+      try {
+        const token = localStorage.getItem('schedule_viewer_token')
+
+        if (!token) {
+          setHasAccess(false)
+          setIsChecking(false)
+          return
+        }
+
+        // Verify token with server
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+        const response = await fetch(`${apiUrl}/check-access`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setHasAccess(data.success === true)
+        } else {
+          // Invalid token, clear it
+          localStorage.removeItem('schedule_viewer_token')
+          setHasAccess(false)
+        }
+      } catch {
+        setHasAccess(false)
+      } finally {
+        setIsChecking(false)
+      }
+    }
+
+    checkAccess()
   }, [])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -44,16 +70,21 @@ export function PasswordGate({ children }: PasswordGateProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Send cookies
         body: JSON.stringify({ password: trimmedPassword }),
       })
 
       if (response.ok) {
-        setPassword('')
-        setError('')
-        // Reload page to check cookie
-        window.location.reload()
-        return
+        const data = await response.json()
+
+        if (data.success && data.token) {
+          // Store token in localStorage
+          localStorage.setItem('schedule_viewer_token', data.token)
+
+          setPassword('')
+          setError('')
+          setHasAccess(true)
+          return
+        }
       }
 
       const data = await response.json().catch(() => null)
