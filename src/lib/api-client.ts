@@ -13,7 +13,15 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
  * Fetch month shifts data from the Worker
  */
 async function getMonthShifts({ ym }: { ym: string }): Promise<MonthShifts> {
-  const response = await fetch(`${API_BASE_URL}/shifts?ym=${ym}`)
+  // Get auth token from localStorage
+  const token = typeof window !== 'undefined' ? localStorage.getItem('schedule_viewer_token') : null
+
+  const headers: HeadersInit = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}/shifts?ym=${ym}`, { headers })
 
   if (!response.ok) {
     const errorData: ApiResponse<never> = await response.json()

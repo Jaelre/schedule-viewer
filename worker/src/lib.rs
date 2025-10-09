@@ -61,6 +61,8 @@ struct AccessResponse {
     success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    token: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -134,8 +136,8 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .post_async("/api/access", |req, ctx| async move {
             handle_access(req, ctx).await
         })
-        .get_async("/api/check-access", |req, _ctx| async move {
-            handle_check_access(req).await
+        .get_async("/api/check-access", |req, ctx| async move {
+            handle_check_access(req, ctx).await
         })
         .get_async("/api/shifts", |req, ctx| async move {
             handle_shifts(req, ctx).await
@@ -496,27 +498,38 @@ fn extract_shift_code(alias: &str) -> String {
         .to_string()
 }
 
-fn has_access_cookie(req: &Request) -> bool {
-    if let Ok(Some(cookie_header)) = req.headers().get("Cookie") {
-        cookie_header
-            .split(';')
-            .any(|cookie| cookie.trim().starts_with("schedule_viewer_access=granted"))
-    } else {
-        false
+fn has_access_token(req: &Request, ctx: &RouteContext<()>) -> bool {
+    // Check for token in Authorization header
+    if let Ok(Some(auth_header)) = req.headers().get("Authorization") {
+        if let Some(token) = auth_header.strip_prefix("Bearer ") {
+            // Get expected password from environment
+            if let Ok(expected_password) = ctx.secret("ACCESS_PASSWORD") {
+                let expected = expected_password.to_string();
+                return constant_time_eq(token.trim().as_bytes(), expected.trim().as_bytes());
+            }
+        }
     }
+    // Fallback: check for old cookie-based auth for backward compatibility
+    if let Ok(Some(cookie_header)) = req.headers().get("Cookie") {
+        return cookie_header
+            .split(';')
+            .any(|cookie| cookie.trim().starts_with("schedule_viewer_access=granted"));
+    }
+    false
 }
 
-async fn handle_check_access(req: Request) -> Result<Response> {
+async fn handle_check_access(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let origin = req
         .headers()
         .get("Origin")?
         .unwrap_or_else(|| "*".to_string());
 
-    let has_access = has_access_cookie(&req);
+    let has_access = has_access_token(&req, &ctx);
 
     let response = AccessResponse {
         success: has_access,
         error: None,
+        token: None,
     };
 
     let json = serde_json::to_string(&response)?;
@@ -562,6 +575,7 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
         let response = AccessResponse {
             success: false,
             error: Some("Password non valida. Riprova.".to_string()),
+            token: None,
         };
 
         let json = serde_json::to_string(&response)?;
@@ -573,10 +587,12 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
         return Ok(Response::error(json, 401)?.with_headers(headers));
     }
 
-    // Success - set HttpOnly cookie with 10-year expiration
+    // Success - return token in response body (password is the token)
+    // Client will store this in localStorage and send it in Authorization header
     let response = AccessResponse {
         success: true,
         error: None,
+        token: Some(expected_password),
     };
 
     let json = serde_json::to_string(&response)?;
@@ -584,13 +600,6 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
     headers.set("Content-Type", "application/json")?;
     headers.set("Access-Control-Allow-Origin", &origin)?;
     headers.set("Access-Control-Allow-Credentials", "true")?;
-
-    // Set cookie: 10 years = 315360000 seconds
-    // Using SameSite=Lax for cross-domain compatibility
-    // This works because PasswordGate reloads the page after authentication (line 87)
-    // The cookie is sent on the top-level navigation after reload
-    let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; HttpOnly; SameSite=Lax; Secure";
-    headers.set("Set-Cookie", cookie)?;
 
     Ok(Response::ok(json)?.with_headers(headers))
 }
@@ -606,7 +615,7 @@ fn handle_options_with_origin(req: &Request) -> Result<Response> {
 
     headers.set("Access-Control-Allow-Origin", &origin)?;
     headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")?;
-    headers.set("Access-Control-Allow-Headers", "Content-Type")?;
+    headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")?;
     headers.set("Access-Control-Allow-Credentials", "true")?;
     headers.set("Access-Control-Max-Age", "86400")?;
 
