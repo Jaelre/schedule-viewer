@@ -125,7 +125,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
 
     // CORS preflight
     if req.method() == Method::Options {
-        return handle_options();
+        return handle_options_with_origin(&req);
     }
 
     // Router
@@ -494,11 +494,17 @@ fn extract_shift_code(alias: &str) -> String {
 }
 
 async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    // Get origin for CORS
+    let origin = req
+        .headers()
+        .get("Origin")?
+        .unwrap_or_else(|| "*".to_string());
+
     // Parse request body
     let body: AccessRequest = match req.json().await {
         Ok(b) => b,
         Err(_) => {
-            return error_response("INVALID_REQUEST", "Invalid JSON", 400);
+            return error_response_with_origin("INVALID_REQUEST", "Invalid JSON", 400, &origin);
         }
     };
 
@@ -506,7 +512,7 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
     let expected_password = match ctx.secret("ACCESS_PASSWORD") {
         Ok(secret) => secret.to_string(),
         Err(_) => {
-            return error_response("CONFIG_ERROR", "Password not configured", 500);
+            return error_response_with_origin("CONFIG_ERROR", "Password not configured", 500, &origin);
         }
     };
 
@@ -525,7 +531,7 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
         let json = serde_json::to_string(&response)?;
         let mut headers = Headers::new();
         headers.set("Content-Type", "application/json")?;
-        headers.set("Access-Control-Allow-Origin", "*")?;
+        headers.set("Access-Control-Allow-Origin", &origin)?;
         headers.set("Access-Control-Allow-Credentials", "true")?;
 
         return Ok(Response::error(json, 401)?.with_headers(headers));
@@ -540,19 +546,28 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
     let json = serde_json::to_string(&response)?;
     let mut headers = Headers::new();
     headers.set("Content-Type", "application/json")?;
-    headers.set("Access-Control-Allow-Origin", "*")?;
+    headers.set("Access-Control-Allow-Origin", &origin)?;
     headers.set("Access-Control-Allow-Credentials", "true")?;
 
     // Set cookie: 10 years = 315360000 seconds
-    let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; HttpOnly; SameSite=None; Secure";
+    // Note: Removed HttpOnly so JavaScript can read it for client-side gate check
+    // Removed Secure for localhost development (add back in production with HTTPS)
+    let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; SameSite=Lax";
     headers.set("Set-Cookie", cookie)?;
 
     Ok(Response::ok(json)?.with_headers(headers))
 }
 
-fn handle_options() -> Result<Response> {
+fn handle_options_with_origin(req: &Request) -> Result<Response> {
     let mut headers = Headers::new();
-    headers.set("Access-Control-Allow-Origin", "*")?;
+
+    // Get origin from request, default to * if not present
+    let origin = req
+        .headers()
+        .get("Origin")?
+        .unwrap_or_else(|| "*".to_string());
+
+    headers.set("Access-Control-Allow-Origin", &origin)?;
     headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")?;
     headers.set("Access-Control-Allow-Headers", "Content-Type")?;
     headers.set("Access-Control-Allow-Credentials", "true")?;
@@ -562,6 +577,10 @@ fn handle_options() -> Result<Response> {
 }
 
 fn error_response(code: &str, message: &str, status: u16) -> Result<Response> {
+    error_response_with_origin(code, message, status, "*")
+}
+
+fn error_response_with_origin(code: &str, message: &str, status: u16, origin: &str) -> Result<Response> {
     let error = ApiError {
         error: ErrorDetails {
             code: code.to_string(),
@@ -572,7 +591,8 @@ fn error_response(code: &str, message: &str, status: u16) -> Result<Response> {
     let json = serde_json::to_string(&error)?;
     let mut headers = Headers::new();
     headers.set("Content-Type", "application/json")?;
-    headers.set("Access-Control-Allow-Origin", "*")?;
+    headers.set("Access-Control-Allow-Origin", origin)?;
+    headers.set("Access-Control-Allow-Credentials", "true")?;
 
     Ok(Response::error(json, status)?.with_headers(headers))
 }
