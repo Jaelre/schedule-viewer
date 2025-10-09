@@ -14,6 +14,17 @@
   background: #e5e7eb;
 }
 
+/* Fixed name column - absolutely positioned overlay */
+.name-column-fixed {
+  /* Prevents interaction with scroll container while allowing cell clicks */
+  pointer-events: none;
+}
+
+/* Days content wrapper - padded to make room for name column */
+.days-content-wrapper {
+  /* Padding is applied inline via style prop for dynamic width */
+}
+
 .grid-cell {
   @apply text-center;
 }
