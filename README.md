@@ -9,6 +9,7 @@ Monthly schedule explorer for emergency department shifts. The UI is built with 
 - Configurable dictionary for shift labels via `NEXT_PUBLIC_SHIFT_CODE_DICT` and doctor name mapping via `src/lib/doctor-names.json`.
 - Cloudflare Worker proxies all data access, injects secrets, retries upstream failures and keeps a short-lived in-memory cache.
 - Client refreshes data every 10 minutes and surfaces clear loading/error states.
+- Schedule access is gated by a server-side password check that issues an HTTP-only cookie (see [docs/access-gate.md](docs/access-gate.md)).
 
 ## Architecture at a Glance
 - **Frontend**: Next.js App Router (static export capable) with Tailwind CSS and shadcn/ui primitives, TanStack Query for data fetching/cache and TanStack Virtual for row virtualisation.
@@ -54,15 +55,23 @@ schedule-viewer/
    ```bash
    cp .env.example .env.local
    # optionally set NEXT_PUBLIC_API_URL to point at a local/remote Worker
-   ```
+ ```
 
    Populate `NEXT_PUBLIC_SHIFT_CODE_DICT` if you want custom labels surfaced in the UI legend.
 
-3. (Optional) adjust local dictionaries:
+3. Set the access password used by the server-side gate:
+
+   ```bash
+   echo 'ACCESS_PASSWORD="choose-a-strong-password"' >> .env.local
+   ```
+
+   Refer to [docs/access-gate.md](docs/access-gate.md) for details on how the cookie-based access gate works.
+
+4. (Optional) adjust local dictionaries:
    - Edit `src/lib/doctor-names.json` to map MetricAid IDs or pseudonyms to the names you want to display.
    - Edit `src/lib/shift-colors.json` to fine-tune colour contrast per shift code.
 
-4. Start the Next.js dev server:
+5. Start the Next.js dev server:
 
    ```bash
    npm run dev
