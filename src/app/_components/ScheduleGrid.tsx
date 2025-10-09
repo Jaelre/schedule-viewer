@@ -104,6 +104,8 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
     `${defaultNameColumnWidths[density]}px`
   )
   const [isHorizontalScrollActive, setIsHorizontalScrollActive] = useState(false)
+  const scrollOffsetRef = useRef(0)
+  const rafRef = useRef<number | null>(null)
 
   // Map people to their display names, filter out Unknown_, and sort by surname
   const peopleWithNames = useMemo(() => {
@@ -131,10 +133,25 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
     }
 
     const handleScroll = () => {
-      const shouldCompact = container.scrollLeft > 0
+      const { scrollLeft } = container
+      const shouldCompact = scrollLeft > 0
       setIsHorizontalScrollActive(prev =>
         prev === shouldCompact ? prev : shouldCompact
       )
+
+      scrollOffsetRef.current = scrollLeft
+
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+      }
+
+      rafRef.current = requestAnimationFrame(() => {
+        container.style.setProperty(
+          '--name-column-offset',
+          `${scrollOffsetRef.current}px`
+        )
+        rafRef.current = null
+      })
     }
 
     container.addEventListener('scroll', handleScroll, { passive: true })
@@ -142,6 +159,9 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
 
     return () => {
       container.removeEventListener('scroll', handleScroll)
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+      }
     }
   }, [])
 
@@ -245,7 +265,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
           }}
         >
           <div
-            className={`${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'} sticky left-0 z-40`}
+            className={`${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'} z-40 name-column-cell`}
           >
             Nome
           </div>
@@ -300,10 +320,8 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
               >
                 {/* Person Name Cell */}
                 <div
-                  className={`${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden`}
+                  className={`${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden name-column-cell`}
                   style={{
-                    position: 'sticky',
-                    left: 0,
                     zIndex: 10
                   }}
                   title={person.displayName}
