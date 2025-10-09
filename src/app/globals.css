@@ -6,19 +6,12 @@
 .schedule-grid-container {
   overflow: auto;
   position: relative;
-  --name-column-offset: 0px;
 }
 
 .schedule-grid {
   display: grid;
   gap: 1px;
   background: #e5e7eb;
-}
-
-.name-column-cell {
-  position: relative;
-  transform: translateX(var(--name-column-offset));
-  will-change: transform;
 }
 
 .grid-header {
