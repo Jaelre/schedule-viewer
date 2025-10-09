@@ -1,22 +1,29 @@
 'use client'
 
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
 
 interface PasswordGateProps {
-  hasAccess: boolean
   children: ReactNode
 }
 
-export function PasswordGate({ hasAccess, children }: PasswordGateProps) {
-  const router = useRouter()
+function getCookie(name: string): boolean {
+  if (typeof document === 'undefined') return false
+  return document.cookie.split('; ').some((cookie) => cookie.startsWith(`${name}=`))
+}
+
+export function PasswordGate({ children }: PasswordGateProps) {
+  const [hasAccess, setHasAccess] = useState(false)
+  const [isChecking, setIsChecking] = useState(true)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  if (hasAccess) {
-    return <>{children}</>
-  }
+  useEffect(() => {
+    // Check for cookie on mount
+    const hasCookie = getCookie('schedule_viewer_access')
+    setHasAccess(hasCookie)
+    setIsChecking(false)
+  }, [])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -31,18 +38,21 @@ export function PasswordGate({ hasAccess, children }: PasswordGateProps) {
     setError('')
 
     try {
-      const response = await fetch('/api/access', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+      const response = await fetch(`${apiUrl}/access`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Send cookies
         body: JSON.stringify({ password: trimmedPassword }),
       })
 
       if (response.ok) {
         setPassword('')
         setError('')
-        router.refresh()
+        // Reload page to check cookie
+        window.location.reload()
         return
       }
 
@@ -59,6 +69,18 @@ export function PasswordGate({ hasAccess, children }: PasswordGateProps) {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+      </div>
+    )
+  }
+
+  if (hasAccess) {
+    return <>{children}</>
   }
 
   return (

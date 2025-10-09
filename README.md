@@ -12,7 +12,7 @@ Monthly schedule explorer for emergency department shifts. The UI is built with 
 - Schedule access is gated by a server-side password check that issues an HTTP-only cookie (see [docs/access-gate.md](docs/access-gate.md)).
 
 ## Architecture at a Glance
-- **Frontend**: Next.js App Router with server-side rendering for password gate, Tailwind CSS and shadcn/ui primitives, TanStack Query for data fetching/cache and TanStack Virtual for row virtualisation.
+- **Frontend**: Next.js App Router (static export) with Tailwind CSS and shadcn/ui primitives, TanStack Query for data fetching/cache and TanStack Virtual for row virtualisation.
 - **Backend**: Rust worker deployed with Cloudflare Wrangler. It validates `ym` parameters, expands month bounds, talks to MetricAid using the `API_TOKEN`, merges multiple shifts per day and exposes a CORS-friendly `/api/shifts` endpoint.
 - **Data flow**: Browser → Worker `/api/shifts?ym=YYYY-MM` → MetricAid `public/schedule` endpoint. Successful responses are cached for `CACHE_TTL_SECONDS` and returned alongside an `X-Cache-Status` header.
 - **Docs**: Architecture decisions live in `docs/adrs`, with upstream API captures inside `.api-samples` and private operational notes under `docs/private/`.
@@ -111,9 +111,13 @@ schedule-viewer/
   The default `wrangler.toml` exposes configurable `API_BASE_URL`, `API_TIMEOUT_MS` and `CACHE_TTL_SECONDS` variables.
 
 - **Cloudflare Pages (frontend)**:
-  - Build command: `npm run build` (Next.js build with server-side rendering).
-  - Framework preset: Next.js
-  - Environments need the same variables as `.env.local` (e.g. `NEXT_PUBLIC_DEFAULT_UNIT_NAME`, `NEXT_PUBLIC_SHIFT_CODE_DICT`, `NEXT_PUBLIC_API_URL` pointing at the Worker, and `ACCESS_PASSWORD` for the password gate).
+  - Build command: `npm run build` (Next.js static export writes to `out/`).
+  - Output directory: `out`.
+  - Environments need the same variables as `.env.local` (e.g. `NEXT_PUBLIC_DEFAULT_UNIT_NAME`, `NEXT_PUBLIC_SHIFT_CODE_DICT`, `NEXT_PUBLIC_API_URL` pointing at the Worker).
+
+- **Worker secrets**:
+  - `API_TOKEN`: MetricAid API authentication
+  - `ACCESS_PASSWORD`: Password gate authentication (set via `wrangler secret put ACCESS_PASSWORD`)
 
 ## API Contract
 
