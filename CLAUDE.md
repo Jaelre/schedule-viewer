@@ -17,8 +17,8 @@ The Rust Worker is critical: it keeps the API token server-side and transforms u
 # Development with mock data
 npm run dev                 # → http://localhost:3000
 
-# Build for production (server-side build)
-npm run build              # Creates .next/ directory for deployment
+# Build for production (static export)
+npm run build              # Creates out/ directory for deployment
 
 # Type checking
 npm run build              # Also validates TypeScript
@@ -180,32 +180,34 @@ wrangler secret put API_TOKEN  # Never commit this
 - UI would need unit selector component
 
 ### Technical Notes
-- **Next.js Config**: Server-side rendering enabled for password gate functionality
-- **Deployment**: Uses Cloudflare Pages with Next.js runtime support
+- **Next.js Config**: Static export (`output: 'export'`) - builds to `out/` directory
+- **Deployment**: Frontend is static HTML/JS, Worker handles all API logic
 - **Tailwind**: Using v3 (v4 had PostCSS compatibility issues with Next.js 15)
-- **API Routes**: `/api/access` for password verification; `/api/shifts` for local dev only (production uses Worker)
+- **Worker Routes**: `/api/access` for password verification, `/api/shifts` for schedule data
 
 ## Deployment Checklist
 
-### Frontend (Cloudflare Pages)
+### Frontend (Cloudflare Pages - Static)
 **Option 1: GitHub Integration**
 1. Push to GitHub
 2. Connect repo in Cloudflare dashboard
-3. Build: `npm run build`
-4. Set env: `NEXT_PUBLIC_API_URL=https://worker-url/api` and `ACCESS_PASSWORD=your-password`
-5. Framework preset: Next.js
+3. Build: `npm run build`, Output: `out`
+4. Set env: `NEXT_PUBLIC_API_URL=https://worker-url/api`
 
-**Option 2: Manual Deploy (requires @cloudflare/next-on-pages)**
+**Option 2: Manual Deploy**
 ```bash
 npm run build
-# Use Cloudflare Pages deployment with Next.js runtime support
-# Not a static export - requires server-side rendering for password gate
+npx wrangler pages deploy out --project-name schedule-viewer
 ```
-**Critical**: Requires Cloudflare Pages with Next.js runtime (not static hosting)
+**Critical**: Deploy `out/` directory (static export)
 
 ### Worker (Cloudflare)
 1. `cd worker && wrangler deploy`
-2. `wrangler secret put API_TOKEN`
+2. Set secrets:
+   ```bash
+   wrangler secret put API_TOKEN
+   wrangler secret put ACCESS_PASSWORD
+   ```
 3. Frontend env: `NEXT_PUBLIC_API_URL=https://schedule-viewer-worker.your-account.workers.dev/api`
 
 ## Troubleshooting

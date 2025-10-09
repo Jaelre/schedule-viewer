@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use constant_time_eq::constant_time_eq;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -47,6 +48,19 @@ struct Person {
 #[derive(Serialize)]
 struct ApiError {
     error: ErrorDetails,
+}
+
+// Password check types
+#[derive(Deserialize)]
+struct AccessRequest {
+    password: String,
+}
+
+#[derive(Serialize)]
+struct AccessResponse {
+    success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -117,6 +131,9 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
     // Router
     let router = Router::new();
     router
+        .post_async("/api/access", |req, ctx| async move {
+            handle_access(req, ctx).await
+        })
         .get_async("/api/shifts", |req, ctx| async move {
             handle_shifts(req, ctx).await
         })
@@ -476,11 +493,69 @@ fn extract_shift_code(alias: &str) -> String {
         .to_string()
 }
 
+async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    // Parse request body
+    let body: AccessRequest = match req.json().await {
+        Ok(b) => b,
+        Err(_) => {
+            return error_response("INVALID_REQUEST", "Invalid JSON", 400);
+        }
+    };
+
+    // Get expected password from environment secret
+    let expected_password = match ctx.secret("ACCESS_PASSWORD") {
+        Ok(secret) => secret.to_string(),
+        Err(_) => {
+            return error_response("CONFIG_ERROR", "Password not configured", 500);
+        }
+    };
+
+    let candidate = body.password.trim();
+    let expected = expected_password.trim();
+
+    // Constant-time comparison to prevent timing attacks
+    let is_valid = constant_time_eq(candidate.as_bytes(), expected.as_bytes());
+
+    if !is_valid {
+        let response = AccessResponse {
+            success: false,
+            error: Some("Password non valida. Riprova.".to_string()),
+        };
+
+        let json = serde_json::to_string(&response)?;
+        let mut headers = Headers::new();
+        headers.set("Content-Type", "application/json")?;
+        headers.set("Access-Control-Allow-Origin", "*")?;
+        headers.set("Access-Control-Allow-Credentials", "true")?;
+
+        return Ok(Response::error(json, 401)?.with_headers(headers));
+    }
+
+    // Success - set HttpOnly cookie with 10-year expiration
+    let response = AccessResponse {
+        success: true,
+        error: None,
+    };
+
+    let json = serde_json::to_string(&response)?;
+    let mut headers = Headers::new();
+    headers.set("Content-Type", "application/json")?;
+    headers.set("Access-Control-Allow-Origin", "*")?;
+    headers.set("Access-Control-Allow-Credentials", "true")?;
+
+    // Set cookie: 10 years = 315360000 seconds
+    let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; HttpOnly; SameSite=None; Secure";
+    headers.set("Set-Cookie", cookie)?;
+
+    Ok(Response::ok(json)?.with_headers(headers))
+}
+
 fn handle_options() -> Result<Response> {
     let mut headers = Headers::new();
     headers.set("Access-Control-Allow-Origin", "*")?;
-    headers.set("Access-Control-Allow-Methods", "GET, OPTIONS")?;
+    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")?;
     headers.set("Access-Control-Allow-Headers", "Content-Type")?;
+    headers.set("Access-Control-Allow-Credentials", "true")?;
     headers.set("Access-Control-Max-Age", "86400")?;
 
     Ok(Response::empty()?.with_headers(headers).with_status(204))

@@ -2,9 +2,9 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Note: Changed from 'export' to support server-side password gate
-  // Deploy to Cloudflare Pages with @cloudflare/next-on-pages
-  // Worker still handles /api/shifts endpoint
+  output: 'export',
+  // Note: Back to static export! Password gate now handled by Rust worker
+  // Deploy out/ directory to Cloudflare Pages (static hosting)
 }
 
 export default nextConfig
