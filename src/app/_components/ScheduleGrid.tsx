@@ -244,15 +244,14 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
             left: 0,
             top: 0,
             width: currentNameColumnWidth,
-            zIndex: 20,
-            pointerEvents: 'none',
+            zIndex: 10,
           }}
         >
           {/* Name Header */}
           <div
-            className={`sticky top-0 z-30 ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+            className={`sticky top-0 ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
             style={{
-              pointerEvents: 'auto',
+              zIndex: 15,
               backgroundColor: isExtraCompact ? 'transparent' : '#e5e7eb',
             }}
           >
@@ -278,7 +277,6 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                     top: 0,
                     height: `${virtualRow.size}px`,
                     transform: `translateY(${virtualRow.start}px)`,
-                    pointerEvents: 'auto',
                   }}
                   title={person.displayName}
                 >
@@ -308,13 +306,16 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
         <div
           className="days-content-wrapper"
           style={{
-            paddingLeft: currentNameColumnWidth,
+            paddingLeft: nameColumnWidth,
+            zIndex: 20,
+            position: 'relative',
           }}
         >
           {/* Header Row - Days Only */}
           <div
-            className="schedule-grid sticky top-0 z-10 bg-gray-200"
+            className="schedule-grid sticky top-0 bg-gray-200"
             style={{
+              zIndex: 25,
               gridTemplateColumns: `repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
               gap: `${gridGap}px`,
               ...(isExtraCompact ? { background: 'transparent' } : {}),

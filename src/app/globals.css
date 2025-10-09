@@ -14,15 +14,15 @@
   background: #e5e7eb;
 }
 
-/* Fixed name column - absolutely positioned overlay */
+/* Fixed name column - absolutely positioned at left: 0, lower z-index */
 .name-column-fixed {
-  /* Prevents interaction with scroll container while allowing cell clicks */
-  pointer-events: none;
+  /* Name column stays fixed while days grid scrolls over it with higher z-index */
 }
 
-/* Days content wrapper - padded to make room for name column */
+/* Days content wrapper - padded to make room for name column, higher z-index */
 .days-content-wrapper {
   /* Padding is applied inline via style prop for dynamic width */
+  /* Higher z-index allows days to scroll over name column */
 }
 
 .grid-cell {
