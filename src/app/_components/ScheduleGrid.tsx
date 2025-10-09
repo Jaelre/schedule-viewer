@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { getDaysInMonth, isWeekend, isItalianHoliday } from '@/lib/date'
 import { getShiftColor } from '@/lib/colors'
@@ -63,6 +63,29 @@ const defaultNameColumnWidths: Record<Density, number> = {
 
 const pseudonymPadding = 8 // Tailwind pl-2
 const widthBuffer = 4
+const compactNameColumnWidth = 72
+
+function getNameAbbreviation(name: string) {
+  const trimmed = name.trim()
+
+  if (!trimmed) {
+    return ''
+  }
+
+  const parts = trimmed.split(/\s+/).filter(Boolean)
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase()
+  }
+
+  const firstWord = parts[0]
+  const lastWord = parts[parts.length - 1]
+
+  const firstInitial = firstWord.charAt(0).toUpperCase()
+  const lastInitial = lastWord.charAt(0).toUpperCase()
+
+  return `${firstInitial}${lastInitial}`
+}
 
 interface ScheduleGridProps {
   data: MonthShifts
@@ -80,6 +103,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   const [nameColumnWidth, setNameColumnWidth] = useState<string>(
     `${defaultNameColumnWidths[density]}px`
   )
+  const [isHorizontalScrollActive, setIsHorizontalScrollActive] = useState(false)
 
   // Map people to their display names, filter out Unknown_, and sort by surname
   const peopleWithNames = useMemo(() => {
@@ -98,6 +122,28 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
       .filter(person => !person.displayName.startsWith('zzz_')) // Filter out Unknown_
       .sort((a, b) => a.displayName.localeCompare(b.displayName, 'it')) // Sort by surname
   }, [people])
+
+  useEffect(() => {
+    const container = parentRef.current
+
+    if (!container) {
+      return
+    }
+
+    const handleScroll = () => {
+      const shouldCompact = container.scrollLeft > 0
+      setIsHorizontalScrollActive(prev =>
+        prev === shouldCompact ? prev : shouldCompact
+      )
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
 
   const daysInMonth = getDaysInMonth(ym)
 
@@ -189,7 +235,11 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
         <div
           className="schedule-grid sticky top-0 z-30 bg-gray-200"
           style={{
-            gridTemplateColumns: `${nameColumnWidth} repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+            gridTemplateColumns: `${
+              isHorizontalScrollActive
+                ? `${compactNameColumnWidth}px`
+                : nameColumnWidth
+            } repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
             gap: `${gridGap}px`,
             ...(isExtraCompact ? { background: 'transparent' } : {}),
           }}
@@ -239,14 +289,18 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   width: '100%',
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
-                  gridTemplateColumns: `${nameColumnWidth} repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+                  gridTemplateColumns: `${
+                    isHorizontalScrollActive
+                      ? `${compactNameColumnWidth}px`
+                      : nameColumnWidth
+                  } repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
                   gap: `${gridGap}px`,
                   ...(isExtraCompact ? { background: 'transparent' } : {}),
                 }}
               >
                 {/* Person Name Cell */}
                 <div
-                  className={`${cellPadding} ${cellHeight} flex w-full items-center justify-between gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden`}
+                  className={`${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden`}
                   style={{
                     position: 'sticky',
                     left: 0,
@@ -254,11 +308,19 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   }}
                   title={person.displayName}
                 >
-                  <span className="min-w-0 flex-1 truncate">
-                    {person.resolvedName}
+                  <span
+                    className={`min-w-0 ${
+                      isHorizontalScrollActive ? 'flex-none font-semibold' : 'flex-1 truncate'
+                    }`}
+                  >
+                    {isHorizontalScrollActive
+                      ? getNameAbbreviation(person.resolvedName)
+                      : person.resolvedName}
                   </span>
-                  {person.pseudonym && (
-                    <span className={`flex-none whitespace-nowrap ${isExtraCompact ? '' : 'pl-2'} text-right text-muted-foreground opacity-70`}>
+                  {!isHorizontalScrollActive && person.pseudonym && (
+                    <span
+                      className={`ml-auto flex-none whitespace-nowrap ${isExtraCompact ? '' : 'pl-2'} text-right text-muted-foreground opacity-70`}
+                    >
                       {person.pseudonym}
                     </span>
                   )}
