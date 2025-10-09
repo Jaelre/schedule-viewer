@@ -14,37 +14,31 @@ export function PasswordGate({ children }: PasswordGateProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    // Detect old non-HttpOnly cookie and prompt user to refresh
-    const hasOldCookie = typeof document !== 'undefined' &&
-      document.cookie.split('; ').some((cookie) => cookie.startsWith('schedule_viewer_access='))
-
-    // Check for HttpOnly cookie via server-side endpoint
+    // Check if we have a token in localStorage
     const checkAccess = async () => {
       try {
+        const token = localStorage.getItem('schedule_viewer_token')
+
+        if (!token) {
+          setHasAccess(false)
+          setIsChecking(false)
+          return
+        }
+
+        // Verify token with server
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
         const response = await fetch(`${apiUrl}/check-access`, {
-          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
         })
 
         if (response.ok) {
           const data = await response.json()
-          const hasServerAccess = data.success === true
-
-          // If we have old cookie but no server-side access, clear it and prompt
-          if (hasOldCookie && !hasServerAccess) {
-            // Delete old cookie
-            document.cookie = 'schedule_viewer_access=; Path=/; Max-Age=0'
-
-            // Show helpful message
-            alert(
-              'Abbiamo aggiornato il sistema di sicurezza.\n\n' +
-              'Per favore, inserisci nuovamente la password.'
-            )
-            setHasAccess(false)
-          } else {
-            setHasAccess(hasServerAccess)
-          }
+          setHasAccess(data.success === true)
         } else {
+          // Invalid token, clear it
+          localStorage.removeItem('schedule_viewer_token')
           setHasAccess(false)
         }
       } catch {
@@ -76,16 +70,21 @@ export function PasswordGate({ children }: PasswordGateProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // Send cookies
         body: JSON.stringify({ password: trimmedPassword }),
       })
 
       if (response.ok) {
-        setPassword('')
-        setError('')
-        // Reload page to check cookie
-        window.location.reload()
-        return
+        const data = await response.json()
+
+        if (data.success && data.token) {
+          // Store token in localStorage
+          localStorage.setItem('schedule_viewer_token', data.token)
+
+          setPassword('')
+          setError('')
+          setHasAccess(true)
+          return
+        }
       }
 
       const data = await response.json().catch(() => null)
