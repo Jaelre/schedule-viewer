@@ -134,6 +134,9 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .post_async("/api/access", |req, ctx| async move {
             handle_access(req, ctx).await
         })
+        .get_async("/api/check-access", |req, _ctx| async move {
+            handle_check_access(req).await
+        })
         .get_async("/api/shifts", |req, ctx| async move {
             handle_shifts(req, ctx).await
         })
@@ -491,6 +494,39 @@ fn extract_shift_code(alias: &str) -> String {
         .unwrap_or(alias)
         .trim()
         .to_string()
+}
+
+fn has_access_cookie(req: &Request) -> bool {
+    if let Ok(Some(cookie_header)) = req.headers().get("Cookie") {
+        cookie_header
+            .split(';')
+            .any(|cookie| cookie.trim().starts_with("schedule_viewer_access=granted"))
+    } else {
+        false
+    }
+}
+
+async fn handle_check_access(req: Request) -> Result<Response> {
+    let origin = req
+        .headers()
+        .get("Origin")?
+        .unwrap_or_else(|| "*".to_string());
+
+    let has_access = has_access_cookie(&req);
+
+    let response = AccessResponse {
+        success: has_access,
+        error: None,
+    };
+
+    let json = serde_json::to_string(&response)?;
+    let mut headers = Headers::new();
+    headers.set("Content-Type", "application/json")?;
+    headers.set("Access-Control-Allow-Origin", &origin)?;
+    headers.set("Access-Control-Allow-Credentials", "true")?;
+    headers.set("Cache-Control", "no-store, must-revalidate")?;
+
+    Ok(Response::ok(json)?.with_headers(headers))
 }
 
 async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {

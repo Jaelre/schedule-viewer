@@ -6,11 +6,6 @@ interface PasswordGateProps {
   children: ReactNode
 }
 
-function getCookie(name: string): boolean {
-  if (typeof document === 'undefined') return false
-  return document.cookie.split('; ').some((cookie) => cookie.startsWith(`${name}=`))
-}
-
 export function PasswordGate({ children }: PasswordGateProps) {
   const [hasAccess, setHasAccess] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
@@ -19,10 +14,47 @@ export function PasswordGate({ children }: PasswordGateProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    // Check for cookie on mount
-    const hasCookie = getCookie('schedule_viewer_access')
-    setHasAccess(hasCookie)
-    setIsChecking(false)
+    // Detect old non-HttpOnly cookie and prompt user to refresh
+    const hasOldCookie = typeof document !== 'undefined' &&
+      document.cookie.split('; ').some((cookie) => cookie.startsWith('schedule_viewer_access='))
+
+    // Check for HttpOnly cookie via server-side endpoint
+    const checkAccess = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+        const response = await fetch(`${apiUrl}/check-access`, {
+          credentials: 'include',
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const hasServerAccess = data.success === true
+
+          // If we have old cookie but no server-side access, clear it and prompt
+          if (hasOldCookie && !hasServerAccess) {
+            // Delete old cookie
+            document.cookie = 'schedule_viewer_access=; Path=/; Max-Age=0'
+
+            // Show helpful message
+            alert(
+              'Abbiamo aggiornato il sistema di sicurezza.\n\n' +
+              'Per favore, inserisci nuovamente la password.'
+            )
+            setHasAccess(false)
+          } else {
+            setHasAccess(hasServerAccess)
+          }
+        } else {
+          setHasAccess(false)
+        }
+      } catch {
+        setHasAccess(false)
+      } finally {
+        setIsChecking(false)
+      }
+    }
+
+    checkAccess()
   }, [])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
