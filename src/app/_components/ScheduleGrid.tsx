@@ -231,7 +231,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
         height: 'calc(100vh - 60px)'
       } as React.CSSProperties}
     >
-      <div className="schedule-grid-wrapper">
+      <div className="schedule-grid-wrapper" style={{ position: 'relative' }}>
         {/* Header Row - Sticky */}
         <div
           className="schedule-grid sticky top-0 z-30 bg-gray-200"
@@ -246,7 +246,11 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
           }}
         >
           <div
-            className={`grid-first-col grid-header ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+            className={`sticky left-0 z-40 ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+            style={{
+              gridColumn: 1,
+              gridRow: 1,
+            }}
           >
             Nome
           </div>
@@ -301,7 +305,11 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
               >
                 {/* Person Name Cell */}
                 <div
-                  className={`grid-first-col ${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden`}
+                  className={`sticky left-0 z-10 ${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden`}
+                  style={{
+                    gridColumn: 1,
+                    gridRow: 1,
+                  }}
                   title={person.displayName}
                 >
                   <span
