@@ -552,7 +552,10 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
     // Set cookie: 10 years = 315360000 seconds
     // Note: Removed HttpOnly so JavaScript can read it for client-side gate check
     // Removed Secure for localhost development (add back in production with HTTPS)
-    let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; SameSite=Lax";
+    // production:
+    let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; HttpOnly; SameSite=None; Secure";
+    // dev:
+    // let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; SameSite=Lax";
     headers.set("Set-Cookie", cookie)?;
 
     Ok(Response::ok(json)?.with_headers(headers))
