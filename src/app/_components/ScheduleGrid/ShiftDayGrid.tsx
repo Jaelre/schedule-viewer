@@ -138,6 +138,8 @@ export function ShiftDayGrid({
     [codes, rows]
   )
 
+  const minRowHeight = useMemo(() => `${rowHeight}px`, [rowHeight])
+
   return (
     <div
       className="h-full overflow-auto"
@@ -145,11 +147,14 @@ export function ShiftDayGrid({
         display: 'grid',
         gridTemplateColumns: `minmax(14rem, 18rem) repeat(${daysInMonth}, minmax(4.25rem, 1fr))`,
         gap: `${gridGap}px`,
-        gridAutoRows: `minmax(${rowHeight}px, auto)`,
+        gridAutoRows: 'auto',
       }}
     >
       <div
         className={`sticky top-0 left-0 z-30 ${cellPadding} flex items-center font-semibold border-b border-r border-gray-300 bg-gray-200`}
+        style={{
+          minHeight: minRowHeight,
+        }}
       >
         Turno
       </div>
@@ -166,6 +171,9 @@ export function ShiftDayGrid({
           <div
             key={`shift-header-${day}`}
             className={`sticky top-0 z-20 ${cellPadding} flex items-center justify-center font-semibold border-b border-gray-300 ${bgClass}`}
+            style={{
+              minHeight: minRowHeight,
+            }}
           >
             {day}
           </div>
@@ -177,9 +185,20 @@ export function ShiftDayGrid({
         const subtitle = getShiftSubtitle(code, label)
 
         return (
-          <div key={`shift-row-${code}`} className="contents">
+          <div
+            key={`shift-row-${code}`}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `minmax(14rem, 18rem) repeat(${daysInMonth}, minmax(4.25rem, 1fr))`,
+              gap: `${gridGap}px`,
+              gridColumn: '1 / -1',
+            }}
+          >
             <div
               className={`sticky left-0 z-10 ${cellPadding} border-r border-b border-gray-300 bg-white flex flex-col justify-center`}
+              style={{
+                minHeight: minRowHeight,
+              }}
             >
               <span className={`font-semibold ${textSize}`}>{code}</span>
               {subtitle && (
@@ -208,7 +227,10 @@ export function ShiftDayGrid({
               return (
                 <div
                   key={`shift-${code}-${day}`}
-                  className={`${cellPadding} border-b border-gray-300 ${bgClass} flex flex-col justify-center gap-1`}
+                  className={`${cellPadding} border-b border-gray-300 ${bgClass} flex flex-col items-start justify-start gap-1`}
+                  style={{
+                    minHeight: minRowHeight,
+                  }}
                 >
                   {doctors.length > 0 ? (
                     doctors.map((doctor) => (
