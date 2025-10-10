@@ -5,18 +5,20 @@ import { getDaysInMonth } from '@/lib/date'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import { StaticGrid } from './StaticGrid'
 import { VirtualizedGrid } from './VirtualizedGrid'
+import { ShiftDayGrid } from './ShiftDayGrid'
 import { preparePeopleWithNames, calculateNameColumnWidth } from './utils'
 import { densityConfig, defaultNameColumnWidths, ROW_VIRTUALIZATION_THRESHOLD } from './types'
-import type { Density } from './types'
+import type { Density, ViewMode } from './types'
 
 interface ScheduleGridProps {
   data: MonthShifts
   density: Density
   codes: string[]
   codeMap?: ShiftCodeMap
+  viewMode: ViewMode
 }
 
-export function ScheduleGrid({ data, density }: ScheduleGridProps) {
+export function ScheduleGrid({ data, density, codes, codeMap, viewMode }: ScheduleGridProps) {
   const { ym, people } = data
   const isExtraCompact = density === 'extra-compact'
 
@@ -28,7 +30,8 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   const peopleWithNames = useMemo(() => preparePeopleWithNames(people), [people])
 
   // Decide rendering strategy
-  const shouldVirtualize = peopleWithNames.length > ROW_VIRTUALIZATION_THRESHOLD
+  const shouldVirtualize =
+    viewMode === 'people' && peopleWithNames.length > ROW_VIRTUALIZATION_THRESHOLD
 
   const daysInMonth = getDaysInMonth(ym)
 
@@ -47,6 +50,27 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
     daysInMonth,
     nameColumnWidth,
     densitySettings,
+  }
+
+  if (viewMode === 'shifts') {
+    return (
+      <div
+        className="border-t border-border"
+        style={{
+          height: 'calc(100vh - 60px)',
+        }}
+      >
+        <ShiftDayGrid
+          data={data}
+          density={density}
+          peopleWithNames={peopleWithNames}
+          daysInMonth={daysInMonth}
+          densitySettings={densitySettings}
+          codes={codes}
+          codeMap={codeMap}
+        />
+      </div>
+    )
   }
 
   // Render appropriate grid component
