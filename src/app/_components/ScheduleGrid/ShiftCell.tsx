@@ -1,15 +1,16 @@
+import shiftStylingConfig from '@/config/shift-styling.config.json'
 import { isWeekend, isItalianHoliday, isWeekday } from '@/lib/date'
 import { getShiftColor } from '@/lib/colors'
 import type { DensitySettings } from './types'
 
-// Load shift styling config with fallback
-let shiftStylingConfig: { conditionalUnderline?: { shiftCode: string; weekdays: number[] } } = {}
-try {
-  shiftStylingConfig = require('@/config/shift-styling.config.json')
-} catch {
-  // Config file doesn't exist, use empty config (no conditional styling)
-  shiftStylingConfig = {}
+type ShiftStylingConfig = {
+  conditionalUnderline?: {
+    shiftCode: string
+    weekdays: number[]
+  }
 }
+
+const resolvedShiftStylingConfig: ShiftStylingConfig = shiftStylingConfig as ShiftStylingConfig
 
 interface ShiftCellProps {
   ym: string
@@ -41,9 +42,9 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
           {codes.map((code, idx) => {
             // Check if conditional underline should be applied
             const shouldUnderline =
-              shiftStylingConfig.conditionalUnderline &&
-              code === shiftStylingConfig.conditionalUnderline.shiftCode &&
-              isWeekday(ym, day, shiftStylingConfig.conditionalUnderline.weekdays)
+              resolvedShiftStylingConfig.conditionalUnderline &&
+              code === resolvedShiftStylingConfig.conditionalUnderline.shiftCode &&
+              isWeekday(ym, day, resolvedShiftStylingConfig.conditionalUnderline.weekdays)
 
             return (
               <span
