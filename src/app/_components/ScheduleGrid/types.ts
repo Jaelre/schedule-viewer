@@ -2,6 +2,8 @@ import type { MonthShifts } from '@/lib/types'
 
 export type Density = 'comfortable' | 'compact' | 'extra-compact'
 
+export type ViewMode = 'people' | 'shifts'
+
 export const ROW_VIRTUALIZATION_THRESHOLD = 55
 
 export interface DensitySettings {

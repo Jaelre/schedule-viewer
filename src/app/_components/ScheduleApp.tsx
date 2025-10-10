@@ -8,6 +8,7 @@ import { shiftCodeMap } from '@/lib/shift-code-map'
 import { MonthNav } from './MonthNav'
 import { DensityToggle, type Density } from './DensityToggle'
 import { ScheduleGrid } from './ScheduleGrid'
+import type { ViewMode } from './ScheduleGrid/types'
 import { LegendModal } from './LegendModal'
 
 export function ScheduleApp() {
@@ -17,6 +18,7 @@ export function ScheduleApp() {
   const currentYM = ymParam && isValidYM(ymParam) ? ymParam : getCurrentYM()
 
   const [density, setDensity] = useState<Density>('compact')
+  const [viewMode, setViewMode] = useState<ViewMode>('people')
   const [isLegendOpen, setIsLegendOpen] = useState(false)
 
   const { data, isLoading, error, refetch } = useMonthShifts(currentYM)
@@ -26,10 +28,22 @@ export function ScheduleApp() {
       <div className="max-w-full space-y-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2 bg-card border-b border-border">
           <MonthNav currentYM={currentYM} />
-          <DensityToggle
-            onDensityChange={setDensity}
-            onLegendClick={() => setIsLegendOpen(true)}
-          />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <DensityToggle
+              onDensityChange={setDensity}
+              onLegendClick={() => setIsLegendOpen(true)}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                setViewMode((prev) => (prev === 'people' ? 'shifts' : 'people'))
+              }
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-secondary/90 transition-colors"
+              aria-pressed={viewMode === 'shifts'}
+            >
+              {viewMode === 'people' ? 'Vista turni' : 'Vista medici'}
+            </button>
+          </div>
         </div>
 
         {isLoading && (
@@ -61,7 +75,13 @@ export function ScheduleApp() {
         {data && !error && (
           <>
             {data.people.length > 0 ? (
-              <ScheduleGrid data={data} density={density} codes={data.codes || []} codeMap={shiftCodeMap} />
+              <ScheduleGrid
+                data={data}
+                density={density}
+                codes={data.codes || []}
+                codeMap={shiftCodeMap}
+                viewMode={viewMode}
+              />
             ) : (
               <div className="bg-card border border-border rounded-lg p-12">
                 <div className="text-center text-muted-foreground">
