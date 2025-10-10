@@ -54,3 +54,6 @@ Variables).
 | API route returns a 500 error stating "Password non configurata." | `ACCESS_PASSWORD` is missing in the environment. Add it to `.env.local` (development) or your deployment's environment variables. |
 | You need to reset access for everyone | Rotate the password and inform users to clear `localStorage` entries for the access token, or wait for the previous token to expire. |
 
+These checks ensure that the worker remains the single source of truth for
+password validation and that every downstream request proves authorization via
+its `Authorization` header.
