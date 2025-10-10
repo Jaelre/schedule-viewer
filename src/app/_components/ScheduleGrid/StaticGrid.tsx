@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect, useRef } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { getDaysInMonth, isWeekend, isItalianHoliday } from '@/lib/date'
 import { ShiftCell } from './ShiftCell'
 import { getNameAbbreviation } from './utils'
@@ -99,10 +99,9 @@ export function StaticGrid({
         const personRow = rows[person.originalIndex]
 
         return (
-          <>
+          <React.Fragment key={`row-${person.id}`}>
             {/* Name Cell - Sticky Left */}
             <div
-              key={`name-${person.id}`}
               className={`sticky left-0 z-10 ${cellPadding} ${cellHeight} flex items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden border-b border-gray-300`}
               title={person.displayName}
             >
@@ -140,7 +139,7 @@ export function StaticGrid({
                 />
               )
             })}
-          </>
+          </React.Fragment>
         )
       })}
     </div>
