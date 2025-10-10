@@ -23,7 +23,6 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
   const [nameColumnWidth, setNameColumnWidth] = useState<string>(
     `${defaultNameColumnWidths[density]}px`
   )
-  const [isHorizontalScrollActive, setIsHorizontalScrollActive] = useState(false)
 
   // Prepare people data
   const peopleWithNames = useMemo(() => preparePeopleWithNames(people), [people])
@@ -47,7 +46,6 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
     peopleWithNames,
     daysInMonth,
     nameColumnWidth,
-    isHorizontalScrollActive,
     densitySettings,
   }
 

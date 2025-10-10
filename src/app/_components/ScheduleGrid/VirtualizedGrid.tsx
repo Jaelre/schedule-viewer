@@ -18,7 +18,7 @@ export function VirtualizedGrid({
   peopleWithNames,
   daysInMonth,
   nameColumnWidth,
-  isHorizontalScrollActive,
+  isHorizontalScrollActive: _isHorizontalScrollActive,
   densitySettings,
 }: VirtualizedGridProps) {
   const parentRef = useRef<HTMLDivElement>(null)
@@ -26,15 +26,21 @@ export function VirtualizedGrid({
   const isExtraCompact = density === 'extra-compact'
   const gridGap = isExtraCompact ? 0 : 1
   const [scrollTop, setScrollTop] = useState(0)
+  const [isHorizontalScrollActive, setIsHorizontalScrollActive] = useState(false)
 
   const { cellPadding, cellHeight, textSize, rowHeight } = densitySettings
 
+  // Track both vertical and horizontal scroll internally
   useEffect(() => {
     const container = parentRef.current
     if (!container) return
 
     const handleScroll = () => {
       setScrollTop(container.scrollTop)
+      const shouldCompact = container.scrollLeft > 0
+      setIsHorizontalScrollActive(prev =>
+        prev === shouldCompact ? prev : shouldCompact
+      )
     }
 
     container.addEventListener('scroll', handleScroll, { passive: true })

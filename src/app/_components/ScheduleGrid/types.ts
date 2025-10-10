@@ -75,5 +75,4 @@ export interface GridCommonProps {
   peopleWithNames: PersonWithDisplay[]
   daysInMonth: number
   nameColumnWidth: string
-  isHorizontalScrollActive: boolean
 }
