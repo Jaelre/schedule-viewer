@@ -1,7 +1,7 @@
 // lib/colors.ts - Deterministic color mapping for shift codes
 // Colors must be accessible (WCAG AA contrast ratio)
 
-import shiftColorsData from './shift-colors.json'
+import shiftColorsData from '@/config/shift-colors.json'
 
 interface ShiftColorConfig {
   background: string

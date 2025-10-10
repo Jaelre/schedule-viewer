@@ -1,4 +1,4 @@
-import doctorNamesData from './doctor-names.json'
+import doctorNamesData from '@/config/doctor-names.json'
 
 export interface DoctorNamesDict {
   comment: string
