@@ -253,7 +253,6 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
           style={{
             zIndex: 30,
             backgroundColor: isExtraCompact ? 'transparent' : '#e5e7eb',
-            pointerEvents: 'auto',
           }}
         >
           Nome
@@ -278,7 +277,6 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   top: 0,
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
-                  pointerEvents: 'auto',
                 }}
                 title={person.displayName}
               >
