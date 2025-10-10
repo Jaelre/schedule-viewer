@@ -75,6 +75,12 @@ src/lib/shift-colors.json
 **/confidential/
 claudedocs/
 
+# Python
+scripts/update_siamo_numeri.py
+__pycache__/
+*.pyc
+*.pyo
+
 # Local AI tooling artifacts
 .claude/
 .wrangler/
