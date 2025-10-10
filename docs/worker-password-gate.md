@@ -1,241 +1,96 @@
-# Worker-Based Password Gate Implementation
+# Worker Password Gate Reference
 
-## Architecture
+This document describes the password-protected access flow implemented by the
+Cloudflare Worker and the Next.js frontend. It summarizes the current behavior
+so new contributors can understand how the worker, token, and client interact.
 
-Instead of requiring Next.js SSR, consolidate password checking into the existing Rust Cloudflare Worker:
+## Overview
+
+The worker exposes three public endpoints that the frontend uses to authenticate
+users and fetch schedules:
 
 ```
 ┌─────────┐     ┌──────────────────┐     ┌──────────┐
 │ Browser │────▶│ Rust Worker      │────▶│ MetricAid│
 │         │◀────│ /api/access      │◀────│   API    │
-└─────────┘     │ /api/shifts      │     └──────────┘
+└─────────┘     │ /api/check-access│     └──────────┘
+                │ /api/shifts      │
                 └──────────────────┘
-                        │
-                        ▼
-                   [Cookies]
 ```
 
-**Benefits:**
-- ✅ Single worker handles all logic
-- ✅ Keep Next.js as static export (simpler deployment)
-- ✅ Secure constant-time password comparison in Rust
-- ✅ No OpenNext complexity
-- ✅ Client-side password form
+All password validation and MetricAid API proxying live inside the worker
+(`worker/src/lib.rs`). The Next.js app ships as static pages and relies on
+client-side logic (`src/app/_components/PasswordGate.tsx`) to request worker
+endpoints.
 
-## Implementation Steps
+## Worker endpoints
 
-### 1. Add Dependencies to `worker/Cargo.toml`
+### `POST /api/access`
+* Source: [`handle_access`](../worker/src/lib.rs)
+* Accepts a JSON body `{ "password": "…" }`.
+* Reads the expected password from the `ACCESS_PASSWORD` secret.
+* Uses `constant_time_eq` to compare the provided password and secret without
+  leaking timing information.
+* On success returns `{ success: true, token: <password> }`. The password itself
+  serves as a bearer token for later requests.
+* On failure returns a 401 with `{ success: false, error: "…" }` and no token.
+* Always mirrors the `Origin` header in CORS responses and sets
+  `Access-Control-Allow-Credentials: true` so the browser may store the token.
 
-```toml
-[dependencies]
-# ... existing deps ...
-constant_time_eq = "0.3"
-```
+### `GET /api/check-access`
+* Source: [`handle_check_access`](../worker/src/lib.rs)
+* Expects an `Authorization: Bearer <token>` header.
+* Re-uses the same constant-time comparison against `ACCESS_PASSWORD`.
+* Responds with `{ success: true }` or `{ success: false }`, allowing the
+  frontend to verify that the stored token is still valid.
 
-### 2. Add Password Check Route to Worker
+### `GET /api/shifts`
+* Source: [`handle_shifts`](../worker/src/lib.rs)
+* Requires a valid `ym=YYYY-MM` query parameter.
+* Validates the incoming token with the same helper used by
+  `/api/check-access`; invalid tokens receive `401 UNAUTHORIZED`.
+* On success fetches schedule data from the upstream MetricAid API using the
+  configured `API_BASE_URL`, `API_TOKEN`, timeout, and caching settings, then
+  reshapes the data for the frontend.
 
-Add to `worker/src/lib.rs` router:
+## Token lifecycle
 
-```rust
-// Add after existing imports
-use constant_time_eq::constant_time_eq;
+1. The user submits the password to `/api/access`.
+2. The worker responds with the password as a token when the credential is
+   correct.
+3. The frontend stores the token in `localStorage` (`schedule_viewer_token`).
+4. Subsequent requests add an `Authorization: Bearer <token>` header.
+5. The worker validates the header for both `/api/check-access` and
+   `/api/shifts`.
+6. If validation fails, the frontend clears the stored token and prompts for the
+   password again.
 
-// Add password check structs
-#[derive(Deserialize)]
-struct AccessRequest {
-    password: String,
-}
+Because the password is never embedded in the static site, revoking or rotating
+access only requires updating the `ACCESS_PASSWORD` secret on the worker.
 
-#[derive(Serialize)]
-struct AccessResponse {
-    success: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-}
+## Frontend interaction
 
-// Update router in main()
-router
-    .post_async("/api/access", |mut req, ctx| async move {
-        handle_access(req, ctx).await
-    })
-    .get_async("/api/shifts", |req, ctx| async move {
-        handle_shifts(req, ctx).await
-    })
-    .run(req, env)
-    .await
+The [`PasswordGate` component](../src/app/_components/PasswordGate.tsx):
 
-// Add handler function
-async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    // Parse request body
-    let body: AccessRequest = match req.json().await {
-        Ok(b) => b,
-        Err(_) => {
-            return Response::error("Invalid JSON", 400);
-        }
-    };
+* Runs entirely on the client (`'use client'`).
+* On mount, reads `localStorage` and calls `/api/check-access` to validate the
+  stored token before showing protected content.
+* Presents a password form when no valid token exists. Successful submissions
+  store the token in `localStorage` and reveal the gated children.
+* Shows loading and error states while awaiting worker responses.
 
-    // Get expected password from environment
-    let expected_password = match ctx.secret("ACCESS_PASSWORD") {
-        Ok(secret) => secret.to_string(),
-        Err(_) => {
-            return Response::error("Password not configured", 500);
-        }
-    };
+All other pages wrap their content in `<PasswordGate>` so the same logic applies
+throughout the application.
 
-    let candidate = body.password.trim();
-    let expected = expected_password.trim();
+## Configuration summary
 
-    // Constant-time comparison
-    let is_valid = constant_time_eq(candidate.as_bytes(), expected.as_bytes());
+* **Worker secrets**: `ACCESS_PASSWORD`, `API_BASE_URL`, `API_TOKEN`, and other
+  runtime configuration live in the worker environment.
+* **Frontend environment**: `NEXT_PUBLIC_API_URL` points to the worker origin
+  (e.g. `https://<worker>.workers.dev/api`). When omitted, the client defaults to
+  relative `/api/*` paths.
+* **CORS**: The worker reflects the request `Origin` header and enables
+  credentials, allowing authenticated fetches from the static site domain.
 
-    if !is_valid {
-        let response = AccessResponse {
-            success: false,
-            error: Some("Password non valida. Riprova.".to_string()),
-        };
-        let mut resp = Response::from_json(&response)?;
-        resp.with_status(401);
-        return add_cors_headers(resp);
-    }
-
-    // Success - set cookie
-    let response = AccessResponse {
-        success: true,
-        error: None,
-    };
-
-    let mut resp = Response::from_json(&response)?;
-
-    // Set HttpOnly cookie with 10-year expiration
-    let cookie = "schedule_viewer_access=granted; Path=/; Max-Age=315360000; HttpOnly; SameSite=Strict; Secure";
-    resp.headers_mut().append("Set-Cookie", cookie)?;
-
-    add_cors_headers(resp)
-}
-
-// Helper to add CORS headers (update existing handle_options if needed)
-fn add_cors_headers(mut response: Response) -> Result<Response> {
-    let headers = response.headers_mut();
-    headers.set("Access-Control-Allow-Origin", "*")?;
-    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")?;
-    headers.set("Access-Control-Allow-Headers", "Content-Type")?;
-    headers.set("Access-Control-Max-Age", "86400")?;
-    Ok(response)
-}
-```
-
-### 3. Set Worker Secret
-
-```bash
-cd worker
-wrangler secret put ACCESS_PASSWORD
-# Enter: Policlinico1
-```
-
-### 4. Update Frontend to Client-Side Check
-
-Modify `src/app/page.tsx`:
-
-```typescript
-// Remove server-side cookie check
-export default function Page() {
-  return <PasswordGate />
-}
-```
-
-Update `src/app/_components/PasswordGate.tsx` to check cookie client-side:
-
-```typescript
-'use client'
-
-import { useState, useEffect } from 'react'
-
-export function PasswordGate({ children }: { children: ReactNode }) {
-  const [hasAccess, setHasAccess] = useState(false)
-  const [isChecking, setIsChecking] = useState(true)
-
-  useEffect(() => {
-    // Check for cookie on mount
-    const hasCookie = document.cookie.includes('schedule_viewer_access=granted')
-    setHasAccess(hasCookie)
-    setIsChecking(false)
-  }, [])
-
-  if (isChecking) {
-    return <LoadingSpinner />
-  }
-
-  if (hasAccess) {
-    return <>{children}</>
-  }
-
-  return <PasswordForm onSuccess={() => setHasAccess(true)} />
-}
-```
-
-### 5. Revert Next.js to Static Export
-
-`next.config.ts`:
-
-```typescript
-const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  output: 'export',
-  // Back to static export!
-}
-```
-
-### 6. Update Frontend API URL
-
-`.env.local`:
-
-```bash
-# Point to worker for BOTH password check and shifts
-NEXT_PUBLIC_API_URL=http://localhost:8787/api
-```
-
-### 7. Remove Server-Side API Route
-
-```bash
-rm -rf src/app/api/
-```
-
-## Deployment
-
-### Worker
-```bash
-cd worker
-wrangler secret put ACCESS_PASSWORD
-wrangler deploy
-```
-
-### Frontend (Static)
-```bash
-npm run build
-# Deploy out/ directory to Cloudflare Pages (static hosting)
-```
-
-## Why This Is Better
-
-| Aspect | SSR Approach | Worker Approach |
-|--------|--------------|-----------------|
-| Next.js | Complex (OpenNext) | Simple (static) |
-| Deployment | Two configs | One config |
-| Security | Node.js crypto | Rust constant-time |
-| Performance | SSR overhead | Static + Worker |
-| Maintenance | Multiple systems | Single worker |
-
-## Testing
-
-```bash
-# Terminal 1: Run worker
-cd worker && wrangler dev
-
-# Terminal 2: Run frontend
-npm run dev
-
-# Test password endpoint
-curl -X POST http://localhost:8787/api/access \
-  -H "Content-Type: application/json" \
-  -d '{"password":"Policlinico1"}'
-```
+Use this document as a reference when updating either the worker or the
+frontend components to ensure the password gate remains consistent.
