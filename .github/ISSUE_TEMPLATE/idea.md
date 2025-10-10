@@ -13,10 +13,10 @@ _One or two sentences — what’s the spark?_
 _Why does this matter? What problem, pain point, or opportunity does it address?_
 
 # Rough Shape
-- [ ] DB
-- [ ] API
-- [ ] UI
-- [ ] Other
+- [ ] Frontend (`src/app`, `src/lib`)
+- [ ] Worker (`worker/src`)
+- [ ] Data/Config (`*.json`)
+- [ ] Other (docs, tooling, etc.)
 
 (Tick boxes only if you *think* the idea touches these areas — no need to fill yet.)
 

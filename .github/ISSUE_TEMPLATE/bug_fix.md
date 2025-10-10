@@ -30,15 +30,15 @@ assignees: ""
 <!-- Hypothesis or confirmed root cause. Link to logs, traces, or SQL snapshots. -->
 
 ## Fix Plan
-- [ ] Reproduce locally or with automated test
-- [ ] Add failing test (unit/integration/e2e)
-- [ ] Implement fix (DB → API → UI as needed)
-- [ ] Backfill data / run migrations (if required)
-- [ ] Update documentation / runbook
-- [ ] Regression tests added or updated
+- [ ] Reproduce locally or capture a failing automated test
+- [ ] Add/extend automated coverage (Vitest/Jest) or document manual QA
+- [ ] Implement fix in `src/app`, `src/lib`, or `worker/` (note cross-cutting impacts)
+- [ ] Update JSON config (`doctor-names.json`, `shift-colors.json`) if affected
+- [ ] Refresh documentation (`AGENTS.md`, `README.md`, `docs/`) where behavior changed
+- [ ] Capture regression coverage (test or manual steps)
 
 ## Validation
-<!-- Outline how the fix will be validated (test steps, feature flags, monitoring). -->
+<!-- List commands run, e.g. `npm run lint`, `npm run build`, `npx wrangler dev`, and manual QA results. -->
 
 ## Follow-up Tasks
 <!-- Additional clean-up, postmortem, or hardening work. Create linked issues if needed. -->
