@@ -232,183 +232,181 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
       className="schedule-grid-container border-t border-border overflow-auto"
       style={{
         '--days-count': daysInMonth,
-        height: 'calc(100vh - 60px)'
+        height: 'calc(100vh - 60px)',
+        position: 'relative',
       } as React.CSSProperties}
     >
-      <div className="schedule-grid-wrapper" style={{ position: 'relative' }}>
-        {/* Fixed Name Column - Absolutely Positioned */}
+      {/* Fixed Name Column - Positioned relative to scroll container */}
+      <div
+        className="name-column-fixed"
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: currentNameColumnWidth,
+          zIndex: 20,
+        }}
+      >
+        {/* Name Header */}
         <div
-          className="name-column-fixed"
+          className={`sticky top-0 ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
           style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width: currentNameColumnWidth,
-            zIndex: 10,
+            zIndex: 30,
+            backgroundColor: isExtraCompact ? 'transparent' : '#e5e7eb',
           }}
         >
-          {/* Name Header */}
-          <div
-            className={`sticky top-0 ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
-            style={{
-              zIndex: 15,
-              backgroundColor: isExtraCompact ? 'transparent' : '#e5e7eb',
-            }}
-          >
-            Nome
-          </div>
-
-          {/* Virtualized Name Cells */}
-          <div
-            style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
-              position: 'relative',
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const person = peopleWithNames[virtualRow.index]
-
-              return (
-                <div
-                  key={`name-${virtualRow.key}`}
-                  className={`${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden border-b border-gray-300`}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                  title={person.displayName}
-                >
-                  <span
-                    className={`min-w-0 ${
-                      isHorizontalScrollActive ? 'flex-none font-semibold' : 'flex-1 truncate'
-                    }`}
-                  >
-                    {isHorizontalScrollActive
-                      ? getNameAbbreviation(person.resolvedName)
-                      : person.resolvedName}
-                  </span>
-                  {!isHorizontalScrollActive && person.pseudonym && (
-                    <span
-                      className={`ml-auto flex-none whitespace-nowrap ${isExtraCompact ? '' : 'pl-2'} text-right text-muted-foreground opacity-70`}
-                    >
-                      {person.pseudonym}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          Nome
         </div>
 
-        {/* Days Content - Scrollable */}
+        {/* Virtualized Name Cells */}
         <div
-          className="days-content-wrapper"
           style={{
-            paddingLeft: nameColumnWidth,
-            zIndex: 20,
+            height: `${rowVirtualizer.getTotalSize()}px`,
             position: 'relative',
           }}
         >
-          {/* Header Row - Days Only */}
-          <div
-            className="schedule-grid sticky top-0 bg-gray-200"
-            style={{
-              zIndex: 25,
-              gridTemplateColumns: `repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
-              gap: `${gridGap}px`,
-              ...(isExtraCompact ? { background: 'transparent' } : {}),
-            }}
-          >
-            {dayHeaders.map((day) => {
-              const isWeekendDay = isWeekend(ym, day)
-              const isHoliday = isItalianHoliday(ym, day)
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const person = peopleWithNames[virtualRow.index]
 
-              return (
-                <div
-                  key={`header-${day}`}
-                  className={`${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
-                    isHoliday ? 'bg-red-50 text-red-900' : isWeekendDay ? 'bg-blue-50 text-blue-900' : 'bg-white'
-                  } border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+            return (
+              <div
+                key={`name-${virtualRow.key}`}
+                className={`${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden border-b border-gray-300`}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+                title={person.displayName}
+              >
+                <span
+                  className={`min-w-0 ${
+                    isHorizontalScrollActive ? 'flex-none font-semibold' : 'flex-1 truncate'
+                  }`}
                 >
-                  {day}
-                </div>
-              )
-            })}
-          </div>
+                  {isHorizontalScrollActive
+                    ? getNameAbbreviation(person.resolvedName)
+                    : person.resolvedName}
+                </span>
+                {!isHorizontalScrollActive && person.pseudonym && (
+                  <span
+                    className={`ml-auto flex-none whitespace-nowrap ${isExtraCompact ? '' : 'pl-2'} text-right text-muted-foreground opacity-70`}
+                  >
+                    {person.pseudonym}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
-          {/* Virtualized Rows - Days Only */}
-          <div
-            style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative',
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const person = peopleWithNames[virtualRow.index]
-              const personRow = rows[person.originalIndex]
+      {/* Days Content - Scrollable, positioned as sibling to name column */}
+      <div
+        className="days-content-wrapper"
+        style={{
+          paddingLeft: nameColumnWidth,
+          zIndex: 1,
+        }}
+      >
+        {/* Header Row - Days Only */}
+        <div
+          className="schedule-grid sticky top-0 bg-gray-200"
+          style={{
+            zIndex: 10,
+            gridTemplateColumns: `repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+            gap: `${gridGap}px`,
+            ...(isExtraCompact ? { background: 'transparent' } : {}),
+          }}
+        >
+          {dayHeaders.map((day) => {
+            const isWeekendDay = isWeekend(ym, day)
+            const isHoliday = isItalianHoliday(ym, day)
 
-              return (
-                <div
-                  key={virtualRow.key}
-                  className="schedule-grid border-b border-gray-300"
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                    gridTemplateColumns: `repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
-                    gap: `${gridGap}px`,
-                    ...(isExtraCompact ? { background: 'transparent' } : {}),
-                  }}
-                >
-                  {/* Shift Cells Only */}
-                  {dayHeaders.map((day) => {
-                    const codes = personRow[day - 1]
-                    const isWeekendDay = isWeekend(ym, day)
-                    const isHoliday = isItalianHoliday(ym, day)
+            return (
+              <div
+                key={`header-${day}`}
+                className={`${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
+                  isHoliday ? 'bg-red-50 text-red-900' : isWeekendDay ? 'bg-blue-50 text-blue-900' : 'bg-white'
+                } border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+              >
+                {day}
+              </div>
+            )
+          })}
+        </div>
 
-                    let bgClass = 'bg-white'
-                    if (isWeekendDay) bgClass = 'bg-blue-50'
-                    if (isHoliday) bgClass = 'bg-red-50'
+        {/* Virtualized Rows - Days Only */}
+        <div
+          style={{
+            height: `${rowVirtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const person = peopleWithNames[virtualRow.index]
+            const personRow = rows[person.originalIndex]
 
-                    return (
-                      <div
-                        key={`${person.id}-${day}`}
-                        className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium overflow-hidden ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
-                      >
-                        {codes && codes.length > 0 ? (
-                          <div
-                            className={`flex flex-col ${isExtraCompact ? 'items-stretch' : 'items-center'} justify-center min-w-0 ${chipGap}`}
-                          >
-                            {codes.map((code, idx) => (
-                              <span
-                                key={`${person.id}-${day}-${idx}`}
-                                className={`${isExtraCompact ? 'w-full' : 'rounded'} font-semibold whitespace-nowrap ${chipClass}`}
-                                style={{
-                                  backgroundColor: getShiftColor(code).background,
-                                  color: getShiftColor(code).text,
-                                }}
-                                title={code}
-                              >
-                                {code}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className={`text-muted-foreground ${placeholderText}`}>-</span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
-          </div>
+            return (
+              <div
+                key={virtualRow.key}
+                className="schedule-grid border-b border-gray-300"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`,
+                  gridTemplateColumns: `repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
+                  gap: `${gridGap}px`,
+                  ...(isExtraCompact ? { background: 'transparent' } : {}),
+                }}
+              >
+                {/* Shift Cells Only */}
+                {dayHeaders.map((day) => {
+                  const codes = personRow[day - 1]
+                  const isWeekendDay = isWeekend(ym, day)
+                  const isHoliday = isItalianHoliday(ym, day)
+
+                  let bgClass = 'bg-white'
+                  if (isWeekendDay) bgClass = 'bg-blue-50'
+                  if (isHoliday) bgClass = 'bg-red-50'
+
+                  return (
+                    <div
+                      key={`${person.id}-${day}`}
+                      className={`grid-cell ${bgClass} ${cellPadding} flex items-center justify-center ${textSize} font-medium overflow-hidden ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+                    >
+                      {codes && codes.length > 0 ? (
+                        <div
+                          className={`flex flex-col ${isExtraCompact ? 'items-stretch' : 'items-center'} justify-center min-w-0 ${chipGap}`}
+                        >
+                          {codes.map((code, idx) => (
+                            <span
+                              key={`${person.id}-${day}-${idx}`}
+                              className={`${isExtraCompact ? 'w-full' : 'rounded'} font-semibold whitespace-nowrap ${chipClass}`}
+                              style={{
+                                backgroundColor: getShiftColor(code).background,
+                                color: getShiftColor(code).text,
+                              }}
+                              title={code}
+                            >
+                              {code}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className={`text-muted-foreground ${placeholderText}`}>-</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
