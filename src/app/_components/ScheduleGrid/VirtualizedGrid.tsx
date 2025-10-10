@@ -156,7 +156,7 @@ export function VirtualizedGrid({
         <div
           className="days-content-wrapper"
           style={{
-            paddingLeft: nameColumnWidth,
+            paddingLeft: currentNameColumnWidth,
             zIndex: 1,
           }}
         >
