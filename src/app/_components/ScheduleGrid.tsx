@@ -104,6 +104,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
     `${defaultNameColumnWidths[density]}px`
   )
   const [isHorizontalScrollActive, setIsHorizontalScrollActive] = useState(false)
+  const [scrollTop, setScrollTop] = useState(0)
 
   // Map people to their display names, filter out Unknown_, and sort by surname
   const peopleWithNames = useMemo(() => {
@@ -131,11 +132,12 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
     }
 
     const handleScroll = () => {
-      const { scrollLeft } = container
+      const { scrollLeft, scrollTop } = container
       const shouldCompact = scrollLeft > 0
       setIsHorizontalScrollActive(prev =>
         prev === shouldCompact ? prev : shouldCompact
       )
+      setScrollTop(scrollTop)
     }
 
     container.addEventListener('scroll', handleScroll, { passive: true })
@@ -263,6 +265,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
           style={{
             height: `${rowVirtualizer.getTotalSize()}px`,
             position: 'relative',
+            transform: `translateY(-${scrollTop}px)`,
           }}
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
