@@ -228,15 +228,13 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
 
   return (
     <div
-      ref={parentRef}
-      className="schedule-grid-container border-t border-border overflow-auto"
+      className="schedule-grid-outer-wrapper border-t border-border"
       style={{
-        '--days-count': daysInMonth,
         height: 'calc(100vh - 60px)',
         position: 'relative',
       } as React.CSSProperties}
     >
-      {/* Fixed Name Column - Positioned relative to scroll container */}
+      {/* Fixed Name Column Overlay - NOT inside scroll container */}
       <div
         className="name-column-fixed"
         style={{
@@ -245,6 +243,8 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
           top: 0,
           width: currentNameColumnWidth,
           zIndex: 20,
+          height: '100%',
+          pointerEvents: 'none',
         }}
       >
         {/* Name Header */}
@@ -253,6 +253,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
           style={{
             zIndex: 30,
             backgroundColor: isExtraCompact ? 'transparent' : '#e5e7eb',
+            pointerEvents: 'auto',
           }}
         >
           Nome
@@ -277,6 +278,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
                   top: 0,
                   height: `${virtualRow.size}px`,
                   transform: `translateY(${virtualRow.start}px)`,
+                  pointerEvents: 'auto',
                 }}
                 title={person.displayName}
               >
@@ -302,14 +304,23 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
         </div>
       </div>
 
-      {/* Days Content - Scrollable, positioned as sibling to name column */}
+      {/* Scroll Container - Sibling to name column */}
       <div
-        className="days-content-wrapper"
+        ref={parentRef}
+        className="schedule-grid-container"
         style={{
-          paddingLeft: nameColumnWidth,
-          zIndex: 1,
+          height: '100%',
+          overflow: 'auto',
         }}
       >
+        {/* Days Content - Scrollable, positioned inside scroll container */}
+        <div
+          className="days-content-wrapper"
+          style={{
+            paddingLeft: nameColumnWidth,
+            zIndex: 1,
+          }}
+        >
         {/* Header Row - Days Only */}
         <div
           className="schedule-grid sticky top-0 bg-gray-200"
@@ -407,6 +418,7 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
               </div>
             )
           })}
+        </div>
         </div>
       </div>
     </div>
