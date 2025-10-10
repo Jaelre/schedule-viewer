@@ -88,10 +88,10 @@ export function VirtualizedGrid({
       >
         {/* Name Header */}
         <div
-          className={`sticky top-0 ${cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+          className={`sticky top-0 ${isExtraCompact ? 'p-1.5' : cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
           style={{
             zIndex: 30,
-            backgroundColor: isExtraCompact ? 'transparent' : '#e5e7eb',
+            backgroundColor: '#e5e7eb',
           }}
         >
           Nome

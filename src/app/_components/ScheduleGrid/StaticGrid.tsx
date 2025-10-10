@@ -70,9 +70,9 @@ export function StaticGrid({
     >
       {/* Header Row */}
       <div
-        className={`sticky top-0 left-0 z-30 ${cellPadding} ${cellHeight} flex items-center font-semibold border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+        className={`sticky top-0 left-0 z-30 ${isExtraCompact ? 'p-1.5' : cellPadding} ${cellHeight} flex items-center font-semibold border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
         style={{
-          backgroundColor: isExtraCompact ? 'transparent' : '#e5e7eb',
+          backgroundColor: '#e5e7eb',
         }}
       >
         Nome

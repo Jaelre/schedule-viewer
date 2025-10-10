@@ -146,15 +146,16 @@ export function ShiftDayGrid({
       className="h-full overflow-auto"
       style={{
         display: 'grid',
-        gridTemplateColumns: `minmax(14rem, 18rem) repeat(${daysInMonth}, minmax(5.5rem, 1fr))`,
+        gridTemplateColumns: `minmax(10rem, 14rem) repeat(${daysInMonth}, minmax(5.5rem, 1fr))`,
         gap: `${gridGap}px`,
         gridAutoRows: 'auto',
       }}
     >
       <div
-        className={`sticky top-0 left-0 z-30 ${cellPadding} flex items-center font-semibold border-b border-r border-gray-300 bg-gray-200`}
+        className={`sticky top-0 left-0 z-30 ${density === 'extra-compact' ? 'p-1.5' : cellPadding} flex items-center font-semibold border-b border-r border-gray-300`}
         style={{
           minHeight: minRowHeight,
+          backgroundColor: '#e5e7eb', // Ensure background is always visible (gray-200)
         }}
       >
         Turno
@@ -191,13 +192,13 @@ export function ShiftDayGrid({
             key={`shift-row-${code}`}
             style={{
               display: 'grid',
-              gridTemplateColumns: `minmax(14rem, 18rem) repeat(${daysInMonth}, minmax(5.5rem, 1fr))`,
+              gridTemplateColumns: `minmax(10rem, 14rem) repeat(${daysInMonth}, minmax(5.5rem, 1fr))`,
               gap: `${gridGap}px`,
               gridColumn: '1 / -1',
             }}
           >
             <div
-              className={`sticky left-0 z-10 ${cellPadding} border-r border-b border-gray-300 flex flex-col justify-center`}
+              className={`sticky left-0 z-10 ${density === 'extra-compact' ? 'p-1.5' : cellPadding} border-r border-b border-gray-300 flex flex-col justify-center`}
               style={{
                 minHeight: minRowHeight,
                 backgroundColor: shiftColor.background,

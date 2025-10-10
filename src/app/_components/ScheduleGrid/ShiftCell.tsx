@@ -32,7 +32,7 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
           {codes.map((code, idx) => (
             <span
               key={`${personId}-${day}-${idx}`}
-              className={`${isExtraCompact ? 'w-full' : 'rounded'} font-semibold whitespace-nowrap ${chipClass}`}
+              className={`${isExtraCompact ? 'w-full px-1.5 py-1' : 'rounded'} font-semibold whitespace-nowrap ${isExtraCompact ? 'text-[0.7rem] leading-tight' : chipClass}`}
               style={{
                 backgroundColor: getShiftColor(code).background,
                 color: getShiftColor(code).text,
