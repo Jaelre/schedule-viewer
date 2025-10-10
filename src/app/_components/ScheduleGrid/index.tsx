@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useState } from 'react'
 import { getDaysInMonth } from '@/lib/date'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import { StaticGrid } from './StaticGrid'
@@ -17,7 +17,6 @@ interface ScheduleGridProps {
 }
 
 export function ScheduleGrid({ data, density }: ScheduleGridProps) {
-  const parentRef = useRef<HTMLDivElement>(null)
   const { ym, people } = data
   const isExtraCompact = density === 'extra-compact'
 
@@ -31,27 +30,6 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
 
   // Decide rendering strategy
   const shouldVirtualize = peopleWithNames.length > ROW_VIRTUALIZATION_THRESHOLD
-
-  // Track horizontal scroll for name column compaction
-  useEffect(() => {
-    const container = parentRef.current
-    if (!container) return
-
-    const handleScroll = () => {
-      const { scrollLeft } = container
-      const shouldCompact = scrollLeft > 0
-      setIsHorizontalScrollActive(prev =>
-        prev === shouldCompact ? prev : shouldCompact
-      )
-    }
-
-    container.addEventListener('scroll', handleScroll, { passive: true })
-    handleScroll()
-
-    return () => {
-      container.removeEventListener('scroll', handleScroll)
-    }
-  }, [])
 
   const daysInMonth = getDaysInMonth(ym)
 
@@ -80,11 +58,9 @@ export function ScheduleGrid({ data, density }: ScheduleGridProps) {
 
   return (
     <div
-      ref={parentRef}
       className="border-t border-border"
       style={{
         height: 'calc(100vh - 60px)',
-        overflow: 'auto',
       }}
     >
       <StaticGrid {...commonProps} />

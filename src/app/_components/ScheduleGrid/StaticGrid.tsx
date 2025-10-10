@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { getDaysInMonth, isWeekend, isItalianHoliday } from '@/lib/date'
 import { ShiftCell } from './ShiftCell'
 import { getNameAbbreviation } from './utils'
@@ -17,12 +17,14 @@ export function StaticGrid({
   peopleWithNames,
   daysInMonth,
   nameColumnWidth,
-  isHorizontalScrollActive,
+  isHorizontalScrollActive: _isHorizontalScrollActive,
   densitySettings,
 }: StaticGridProps) {
+  const gridRef = useRef<HTMLDivElement>(null)
   const { ym, rows } = data
   const isExtraCompact = density === 'extra-compact'
   const gridGap = isExtraCompact ? 0 : 1
+  const [isHorizontalScrollActive, setIsHorizontalScrollActive] = useState(false)
 
   const { cellPadding, cellHeight, textSize } = densitySettings
 
@@ -30,12 +32,34 @@ export function StaticGrid({
     return Array.from({ length: daysInMonth }, (_, i) => i + 1)
   }, [daysInMonth])
 
+  // Track horizontal scroll internally
+  useEffect(() => {
+    const grid = gridRef.current
+    if (!grid) return
+
+    const handleScroll = () => {
+      const { scrollLeft } = grid
+      const shouldCompact = scrollLeft > 0
+      setIsHorizontalScrollActive(prev =>
+        prev === shouldCompact ? prev : shouldCompact
+      )
+    }
+
+    grid.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+
+    return () => {
+      grid.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
   const currentNameColumnWidth = isHorizontalScrollActive
     ? `${compactNameColumnWidth}px`
     : nameColumnWidth
 
   return (
     <div
+      ref={gridRef}
       className="schedule-grid-static"
       style={{
         display: 'grid',
