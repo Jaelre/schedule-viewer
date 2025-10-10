@@ -54,6 +54,18 @@ export function isWeekend(ym: string, day: number): boolean {
 }
 
 /**
+ * Check if a date matches specific weekdays
+ * Day is 1-indexed (1 = first day of month)
+ * Weekdays: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+ */
+export function isWeekday(ym: string, day: number, weekdays: number[]): boolean {
+  const [year, month] = ym.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  const dayOfWeek = date.getDay()
+  return weekdays.includes(dayOfWeek)
+}
+
+/**
  * Italian public holidays (fixed dates + Easter-based)
  * Returns true if the given day is a holiday
  */

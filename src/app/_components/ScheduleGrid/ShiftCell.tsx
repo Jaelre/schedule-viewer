@@ -1,6 +1,15 @@
-import { isWeekend, isItalianHoliday } from '@/lib/date'
+import { isWeekend, isItalianHoliday, isWeekday } from '@/lib/date'
 import { getShiftColor } from '@/lib/colors'
 import type { DensitySettings } from './types'
+
+// Load shift styling config with fallback
+let shiftStylingConfig: { conditionalUnderline?: { shiftCode: string; weekdays: number[] } } = {}
+try {
+  shiftStylingConfig = require('@/config/shift-styling.config.json')
+} catch {
+  // Config file doesn't exist, use empty config (no conditional styling)
+  shiftStylingConfig = {}
+}
 
 interface ShiftCellProps {
   ym: string
@@ -29,19 +38,27 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
         <div
           className={`flex flex-col ${isExtraCompact ? 'items-stretch' : 'items-center'} justify-center min-w-0 ${chipGap}`}
         >
-          {codes.map((code, idx) => (
-            <span
-              key={`${personId}-${day}-${idx}`}
-              className={`${isExtraCompact ? 'w-full px-1.5 py-1' : 'rounded'} font-semibold whitespace-nowrap ${isExtraCompact ? 'text-[0.7rem] leading-tight' : chipClass}`}
-              style={{
-                backgroundColor: getShiftColor(code).background,
-                color: getShiftColor(code).text,
-              }}
-              title={code}
-            >
-              {code}
-            </span>
-          ))}
+          {codes.map((code, idx) => {
+            // Check if conditional underline should be applied
+            const shouldUnderline =
+              shiftStylingConfig.conditionalUnderline &&
+              code === shiftStylingConfig.conditionalUnderline.shiftCode &&
+              isWeekday(ym, day, shiftStylingConfig.conditionalUnderline.weekdays)
+
+            return (
+              <span
+                key={`${personId}-${day}-${idx}`}
+                className={`${isExtraCompact ? 'w-full px-1.5 py-1' : 'rounded'} font-semibold whitespace-nowrap ${isExtraCompact ? 'text-[0.7rem] leading-tight' : chipClass} ${shouldUnderline ? 'underline' : ''}`}
+                style={{
+                  backgroundColor: getShiftColor(code).background,
+                  color: getShiftColor(code).text,
+                }}
+                title={code}
+              >
+                {code}
+              </span>
+            )
+          })}
         </div>
       ) : (
         <span className={`text-muted-foreground ${placeholderText}`}>-</span>

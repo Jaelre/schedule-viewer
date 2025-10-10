@@ -66,8 +66,9 @@ Thumbs.db
 
 # Sensitive information and private files
 docs/private/
-src/lib/doctor-names.json
-src/lib/shift-colors.json
+src/config/doctor-names.json
+src/config/shift-colors.json
+src/config/shift-styling.config.json
 *.xlsx
 *.xls
 *.csv
