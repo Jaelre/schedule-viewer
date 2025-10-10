@@ -26,6 +26,7 @@
   "homepage": "https://github.com/Jaelre/schedule-viewer#readme",
   "dependencies": {
     "@tanstack/react-query": "^5.90.2",
+    "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.12",
     "next": "^15.5.4",
     "react": "^19.2.0",
