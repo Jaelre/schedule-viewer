@@ -17,7 +17,6 @@ export function StaticGrid({
   peopleWithNames,
   daysInMonth,
   nameColumnWidth,
-  isHorizontalScrollActive: _isHorizontalScrollActive,
   densitySettings,
 }: StaticGridProps) {
   const gridRef = useRef<HTMLDivElement>(null)

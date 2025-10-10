@@ -18,7 +18,6 @@ export function VirtualizedGrid({
   peopleWithNames,
   daysInMonth,
   nameColumnWidth,
-  isHorizontalScrollActive: _isHorizontalScrollActive,
   densitySettings,
 }: VirtualizedGridProps) {
   const parentRef = useRef<HTMLDivElement>(null)
