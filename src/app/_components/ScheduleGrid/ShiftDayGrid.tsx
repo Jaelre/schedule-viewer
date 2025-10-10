@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { isWeekend, isItalianHoliday } from '@/lib/date'
+import { getShiftColor } from '@/lib/colors'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import type { Density, DensitySettings, PersonWithDisplay } from './types'
 
@@ -145,7 +146,7 @@ export function ShiftDayGrid({
       className="h-full overflow-auto"
       style={{
         display: 'grid',
-        gridTemplateColumns: `minmax(14rem, 18rem) repeat(${daysInMonth}, minmax(4.25rem, 1fr))`,
+        gridTemplateColumns: `minmax(14rem, 18rem) repeat(${daysInMonth}, minmax(5.5rem, 1fr))`,
         gap: `${gridGap}px`,
         gridAutoRows: 'auto',
       }}
@@ -183,31 +184,34 @@ export function ShiftDayGrid({
       {shiftOrder.map((code) => {
         const label = getShiftLabel(code, shiftNames, codeMap)
         const subtitle = getShiftSubtitle(code, label)
+        const shiftColor = getShiftColor(code)
 
         return (
           <div
             key={`shift-row-${code}`}
             style={{
               display: 'grid',
-              gridTemplateColumns: `minmax(14rem, 18rem) repeat(${daysInMonth}, minmax(4.25rem, 1fr))`,
+              gridTemplateColumns: `minmax(14rem, 18rem) repeat(${daysInMonth}, minmax(5.5rem, 1fr))`,
               gap: `${gridGap}px`,
               gridColumn: '1 / -1',
             }}
           >
             <div
-              className={`sticky left-0 z-10 ${cellPadding} border-r border-b border-gray-300 bg-white flex flex-col justify-center`}
+              className={`sticky left-0 z-10 ${cellPadding} border-r border-b border-gray-300 flex flex-col justify-center`}
               style={{
                 minHeight: minRowHeight,
+                backgroundColor: shiftColor.background,
+                color: shiftColor.text,
               }}
             >
               <span className={`font-semibold ${textSize}`}>{code}</span>
               {subtitle && (
-                <span className={`text-muted-foreground ${placeholderText}`}>
+                <span className={`opacity-75 ${placeholderText}`}>
                   {subtitle}
                 </span>
               )}
               {!subtitle && label !== code && (
-                <span className={`text-muted-foreground ${placeholderText}`}>
+                <span className={`opacity-75 ${placeholderText}`}>
                   {label}
                 </span>
               )}
@@ -218,32 +222,29 @@ export function ShiftDayGrid({
               const isWeekendDay = isWeekend(ym, day)
               const isHoliday = isItalianHoliday(ym, day)
 
-              const bgClass = isHoliday
-                ? 'bg-red-50'
-                : isWeekendDay
-                  ? 'bg-blue-50'
-                  : 'bg-white'
-
               return (
                 <div
                   key={`shift-${code}-${day}`}
-                  className={`${cellPadding} border-b border-gray-300 ${bgClass} flex flex-col items-start justify-start gap-1`}
+                  className={`${cellPadding} border-b border-gray-300 flex flex-col items-start justify-start gap-1`}
                   style={{
                     minHeight: minRowHeight,
+                    backgroundColor: shiftColor.background,
+                    color: shiftColor.text,
                   }}
                 >
                   {doctors.length > 0 ? (
                     doctors.map((doctor) => (
                       <div
                         key={`${code}-${day}-${doctor.id}`}
-                        className="flex items-center gap-2 min-w-0"
+                        className="flex items-center gap-2 min-w-0 w-full"
+                        title={`${doctor.resolvedName}${doctor.pseudonym ? ` (${doctor.pseudonym})` : ''}`}
                       >
                         <span className={`font-medium truncate ${textSize}`}>
                           {doctor.resolvedName}
                         </span>
                         {doctor.pseudonym && (
                           <span
-                            className={`text-muted-foreground flex-none ${placeholderText}`}
+                            className={`opacity-75 truncate ${placeholderText}`}
                           >
                             {doctor.pseudonym}
                           </span>
@@ -251,7 +252,7 @@ export function ShiftDayGrid({
                       </div>
                     ))
                   ) : (
-                    <span className={`text-muted-foreground ${placeholderText}`}>
+                    <span className={`opacity-50 ${placeholderText}`}>
                       -
                     </span>
                   )}
