@@ -2,151 +2,68 @@
 
 ## Context
 
-The password gate feature requires server-side rendering, which changed our deployment approach. This document outlines the available options.
-
-## Option 1: OpenNext Cloudflare Adapter (Full Node.js Runtime)
-
-**Best for**: Apps using Node.js APIs like `crypto.timingSafeEqual`
-
-### Setup
-
-```bash
-# Install adapter
-npm install --save-dev @opennextjs/cloudflare
-
-# Add scripts
-npm pkg set scripts.pages:build="npx @opennextjs/cloudflare"
-npm pkg set scripts.pages:deploy="npm run pages:build && wrangler pages deploy .open-next/worker"
-```
-
-### Configuration
-
-Create `wrangler.toml` in project root:
-
-```toml
-name = "schedule-viewer"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
-
-[vars]
-NEXT_PUBLIC_API_URL = "https://schedule-viewer-worker.your-account.workers.dev/api"
-NEXT_PUBLIC_DEFAULT_UNIT_NAME = "Emergency Department"
-NEXT_PUBLIC_SHIFT_CODE_DICT = '{"D":{"label":"Day"},"N":{"label":"Night"},"O":{"label":"Off"}}'
-```
-
-### Deployment
-
-```bash
-# Set secret (only once)
-npx wrangler secret put ACCESS_PASSWORD
-
-# Deploy
-npm run pages:deploy
-```
-
-### Pros
-- ✅ Full Node.js runtime support
-- ✅ Works with existing crypto implementation
-- ✅ No code changes needed
-
-### Cons
-- ❌ More complex deployment
-- ❌ Requires wrangler CLI
-- ❌ Additional build step
+Schedule Viewer now ships as a fully static Next.js export. All data access, caching and the password gate are handled by the Rust Cloudflare Worker, so there is no longer a need to run the frontend with SSR or the Edge runtime. The default deployment therefore combines a static site host (Cloudflare Pages or any CDN bucket) with the Worker.
 
 ---
 
-## Option 2: Edge Runtime with Simple Password Check
+## Default Deployment: Cloudflare Worker + Static Frontend
 
-**Best for**: Simpler deployment, Cloudflare Pages dashboard integration
+### 1. Deploy the Worker
 
-### Code Changes Required
+1. Install prerequisites if you have not already:
+   - `rustup target add wasm32-unknown-unknown`
+   - `npm install -g wrangler`
+2. Configure environment variables:
+   ```bash
+   cd worker
+   cp .dev.vars.example .dev.vars       # optional local defaults
+   wrangler secret put API_TOKEN        # MetricAid token
+   wrangler secret put ACCESS_PASSWORD  # Password shared with the frontend
+   ```
+3. (Optional) override defaults in `wrangler.toml` (`API_BASE_URL`, `API_TIMEOUT_MS`, `CACHE_TTL_SECONDS`).
+4. Deploy:
+   ```bash
+   wrangler deploy
+   ```
+5. Note the public Worker URL (e.g. `https://schedule-viewer-worker.your-account.workers.dev`); the static site will call `/api/*` on this host.
 
-Modify `src/app/api/access/route.ts` to use simple string comparison:
+### 2. Build and publish the static frontend
 
-```typescript
-import { NextResponse } from 'next/server'
-import { ACCESS_COOKIE, ACCESS_COOKIE_MAX_AGE } from '@/lib/auth'
-
-export const runtime = 'edge' // Enable Edge Runtime
-
-export async function POST(request: Request) {
-  const body = await request.json().catch(() => null)
-  const password = body?.password
-
-  if (typeof password !== 'string' || password.trim().length === 0) {
-    return NextResponse.json({ error: 'Password richiesta.' }, { status: 400 })
-  }
-
-  const expectedPassword = process.env.ACCESS_PASSWORD
-
-  if (!expectedPassword) {
-    return NextResponse.json({ error: 'Password non configurata.' }, { status: 500 })
-  }
-
-  // Simple string comparison (Edge Runtime compatible)
-  // Note: Not timing-safe, but acceptable for low-security scenarios
-  if (password.trim() !== expectedPassword) {
-    return NextResponse.json({ error: 'Password non valida. Riprova.' }, { status: 401 })
-  }
-
-  const response = NextResponse.json({ success: true })
-
-  response.cookies.set({
-    name: ACCESS_COOKIE,
-    value: 'granted',
-    httpOnly: true,
-    path: '/',
-    maxAge: ACCESS_COOKIE_MAX_AGE,
-    sameSite: 'strict',
-    secure: true,
-  })
-
-  return response
-}
-```
-
-### Deployment via Cloudflare Dashboard
-
-1. Go to Cloudflare dashboard → Pages
-2. Connect GitHub repository
-3. Framework preset: **Next.js**
-4. Build command: `npm run build`
-5. Build output directory: (leave default)
-6. Environment variables:
-   - `ACCESS_PASSWORD`
-   - `NEXT_PUBLIC_API_URL`
+1. Set the public environment variables that are baked into the static export. These can be supplied via `.env.production` locally or via your Pages/CI configuration:
+   - `NEXT_PUBLIC_API_URL` → the Worker origin plus `/api` (e.g. `https://schedule-viewer-worker.your-account.workers.dev/api`).
    - `NEXT_PUBLIC_DEFAULT_UNIT_NAME`
    - `NEXT_PUBLIC_SHIFT_CODE_DICT`
+2. Build the export:
+   ```bash
+   npm install
+   npm run build   # writes the static site to out/
+   ```
+3. Upload the `out/` directory to your static host:
+   - **Cloudflare Pages**: create a Pages project, set the variables above, set build command `npm run build`, and specify `out` as the output directory.
+   - **Other static hosts** (S3 + CloudFront, Netlify Drop, GitHub Pages, etc.): upload the contents of `out/` and ensure the site is served over HTTPS.
 
-### Pros
-- ✅ Simpler deployment
-- ✅ GitHub integration
-- ✅ Automatic deployments
-- ✅ No wrangler CLI needed
-
-### Cons
-- ❌ Requires code modification
-- ❌ Less secure password comparison (timing attacks possible)
-- ❌ Limited to Edge Runtime APIs
-
----
-
-## Option 3: Alternative Hosting (Vercel/Netlify)
-
-If Cloudflare complexity is too high, consider:
-
-- **Vercel**: Native Next.js support, zero config
-- **Netlify**: Good Next.js support, environment variables UI
-
-Both support full Node.js runtime out of the box.
+The static site consumes the Worker for everything non-static, so no additional server-side infrastructure is required.
 
 ---
 
-## Recommendation
+## Worker Access Token Contract
 
-**For Production**: Use **Option 1** (OpenNext) for security best practices
+The Worker exposes the following endpoints:
 
-**For Quick Testing**: Use **Option 2** (Edge Runtime) for simplicity
+- `POST /api/access` – accepts `{ "password": "..." }` and returns `{ "success": true, "token": "..." }` when the password matches `ACCESS_PASSWORD`.
+- `GET /api/check-access` – validates the caller by checking the `Authorization: Bearer <token>` header (and, for legacy clients, the old cookie).
+- `GET /api/shifts?ym=YYYY-MM` – returns the month schedule, enforcing the same bearer-token check.
 
-**For Long-term**: Consider **Option 3** (Vercel) if Cloudflare Workers complexity is unwanted
+The static frontend stores the returned token (currently identical to the password) and includes it in the `Authorization` header for subsequent requests. Any alternative frontend or integration must follow the same contract: obtain the token via `/api/access`, then send it as a bearer token to `check-access` and `shifts`.
+
+---
+
+## Alternative Hosting Notes
+
+You are free to host the static export anywhere, provided it can call the Worker over HTTPS and attach the bearer token header. Typical options include:
+
+- **Vercel / Netlify / S3 + CDN**: run `npm run build`, upload `out/`, and configure public environment variables so the build knows which Worker URL to call. Ensure the Worker domain is allowed by your host's CORS settings if you introduce a custom domain.
+- **Internal portals**: bundle the static assets into the existing site but preserve the fetches to the Worker and forward the bearer token header unmodified.
+
+Regardless of host, never expose the MetricAid `API_TOKEN` to the frontend. All secrets stay inside the Worker, and the only shared secret is the password/token pair managed through `ACCESS_PASSWORD`.
+
