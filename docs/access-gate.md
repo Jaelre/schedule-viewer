@@ -1,24 +1,29 @@
 # Access Gate Overview
 
-The schedule UI is protected by a lightweight password gate that only renders the
-application after the server has issued an access cookie. This document explains how
-the flow works and how to configure it for local development and deployments.
+The schedule UI is protected by a lightweight password gate backed by the
+Cloudflare Worker. Clients request a short-lived token and keep it in browser
+storage, while the Worker validates the token before allowing access to the
+schedule API. This document explains how the flow works and how to configure it
+for local development and deployments.
 
-## How the gate works
+## Worker-managed client token flow
 
-1. Visitors land on `/` and see a password form when the `schedule_viewer_access`
-   cookie is missing.
-2. Submitting the form triggers a `POST` request to `/api/access`.
-3. The API route runs on the server and compares the submitted password against the
-   `ACCESS_PASSWORD` environment variable using a timing-safe comparison.
-4. When the password matches, the server returns success and sets the
-   `schedule_viewer_access` cookie with `HttpOnly`, `SameSite=strict`, and a long
-   expiration so future visits bypass the gate.
-5. The page refreshes and the server component verifies the cookie before rendering
-   the full schedule.
+1. Visitors land on `/` and see a password form when no valid access token is
+   present in `localStorage`.
+2. Submitting the form triggers a `POST` request to `/api/access` handled by the
+   Worker.
+3. The Worker compares the submitted password against the `ACCESS_PASSWORD`
+   environment variable using a timing-safe comparison.
+4. When the password matches, the Worker responds with a JSON payload containing
+   the access token and its expiration timestamp.
+5. The browser stores the token in `localStorage` and immediately retries
+   `/api/check-access` with an `Authorization: Bearer <token>` header.
+6. Valid tokens receive a 200 response and the app proceeds to fetch schedules;
+   invalid or expired tokens trigger a logout and the password form is displayed
+   again.
 
-If the password is wrong or the environment variable is not configured, the API
-returns an error and the password form shows the validation message.
+If the password is wrong or the environment variable is not configured, the Worker
+returns an error and the password form surfaces the validation message.
 
 ## Configuration
 
@@ -38,16 +43,14 @@ Variables).
 ## Rotating the password
 
 1. Update the `ACCESS_PASSWORD` environment variable to the new secret.
-2. Invalidate the existing cookie by changing its value: either remove the cookie
-   manually from the browser or redeploy after updating the variable. The cookie is
-   named `schedule_viewer_access` and deleting it will force the gate to prompt for
-   the new password.
+2. Invalidate existing tokens by changing the password and redeploying. Users will
+   be forced to re-authenticate the next time the token is checked.
 
 ## Troubleshooting
 
 | Symptom | Resolution |
 | --- | --- |
-| Password form keeps showing even after entering the correct password | Ensure `ACCESS_PASSWORD` is set and matches what you expect. Check server logs for `/api/access` responses. |
+| Password form keeps showing even after entering the correct password | Ensure `ACCESS_PASSWORD` is set and matches what you expect. Check Worker logs for `/api/access` responses. |
 | API route returns a 500 error stating "Password non configurata." | `ACCESS_PASSWORD` is missing in the environment. Add it to `.env.local` (development) or your deployment's environment variables. |
-| You need to reset access for everyone | Rotate the password and clear the `schedule_viewer_access` cookie in affected browsers. |
+| You need to reset access for everyone | Rotate the password and inform users to clear `localStorage` entries for the access token, or wait for the previous token to expire. |
 
