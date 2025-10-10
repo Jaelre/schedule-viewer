@@ -9,21 +9,26 @@ assignees: ""
 ## User Story
 _As a [role] I want [goal] so that [benefit]._  
 
-## Scope (Vertical Slice)
-- Covers **DB → API → UI** in one issue
-- Must result in a **demoable outcome in the browser**
+## Scope (End-to-End Slice)
+- Ships a demoable update in the schedule viewer UI
+- Accounts for Worker/API, frontend, and JSON config impacts
 
 ## Description
 <!-- Short description of what this feature should do. -->
 
+## Implementation Areas
+- [ ] Frontend (`src/app`, `src/lib`)
+- [ ] Worker (`worker/src`)
+- [ ] Data/Config (`doctor-names.json`, `shift-colors.json`)
+- [ ] Docs / Guides (`AGENTS.md`, `docs/`, `claudedocs/`)
+
 ## Acceptance Criteria (Definition of Done)
-- [ ] Migration/schema updated (if needed)
-- [ ] DTO / contract updated and regenerated (Rust + TS)
-- [ ] Golden sample test updated/added
-- [ ] API endpoint created/extended
-- [ ] UI renders new data (handles loading/error/empty)
-- [ ] Documentation/ADR updated
-- [ ] Demo branch shows working vertical
+- [ ] Worker/API contracts updated and documented (if applicable)
+- [ ] UI handles loading, error, and empty states for the new flow
+- [ ] Lint/build/test scripts pass (`npm run lint`, `npm run build`, worker checks)
+- [ ] Automated or manual regression coverage captured
+- [ ] Docs/ADR updated with notable decisions
+- [ ] Demo URL or screenshots attached
 
 ## Out of Scope
 <!-- Explicitly list what is NOT part of this issue (helps fight scope creep). -->
