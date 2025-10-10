@@ -14,22 +14,17 @@
   background: #e5e7eb;
 }
 
-.grid-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  @apply bg-white;
+/* Fixed name column - absolutely positioned relative to scroll container */
+.name-column-fixed {
+  /* Positioned at left: 0 relative to scroll container (not inner wrapper) */
+  /* Higher z-index (20) keeps it on top of days content */
+  /* Days grid scrolls underneath the name column */
 }
 
-.grid-first-col {
-  position: sticky;
-  left: 0;
-  z-index: 10;
-  @apply bg-white;
-}
-
-.grid-header.grid-first-col {
-  z-index: 30;
+/* Days content wrapper - padded to make room for name column */
+.days-content-wrapper {
+  /* Padding is applied inline via style prop for dynamic width */
+  /* Lower z-index (1) allows it to scroll under name column */
 }
 
 .grid-cell {

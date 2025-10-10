@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import type { Density } from './ScheduleGrid/types'
 
-export type Density = 'extra-compact' | 'compact' | 'comfortable'
+export type { Density }
 
 interface DensityToggleProps {
   onDensityChange: (density: Density) => void
