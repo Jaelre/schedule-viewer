@@ -68,7 +68,6 @@ Thumbs.db
 docs/private/
 src/config/doctor-names.json
 src/config/shift-colors.json
-src/config/shift-styling.config.json
 *.xlsx
 *.xls
 *.csv

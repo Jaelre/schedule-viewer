@@ -67,9 +67,10 @@ schedule-viewer/
 
    Refer to [docs/access-gate.md](docs/access-gate.md#worker-managed-client-token-flow) for details on how the token-based access gate works.
 
-4. (Optional) adjust local dictionaries:
-   - Edit `src/lib/doctor-names.json` to map MetricAid IDs or pseudonyms to the names you want to display.
-   - Edit `src/lib/shift-colors.json` to fine-tune colour contrast per shift code.
+4. (Optional) adjust local dictionaries and styling overrides:
+   - Copy `src/config/doctor-names.json.example` to `src/config/doctor-names.json` and edit the `names` map to control how IDs render in the grid.
+   - Copy `src/config/shift-colors.json.example` to `src/config/shift-colors.json` if you need to fine-tune colour contrast per shift code.
+   - Update `src/config/shift-styling.config.json` to enable the conditional underline helper (ships empty by default). The example at `src/config/shift-styling.config.example.json` documents the weekday indexes.
 
 5. Start the Next.js dev server:
 
