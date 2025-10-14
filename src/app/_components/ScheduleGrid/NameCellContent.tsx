@@ -1,5 +1,7 @@
 'use client'
 
+import fullNameOverridesConfig from '@/config/full-name-overrides.json'
+
 import { getNameAbbreviation } from './utils'
 import { useAdaptiveCompactName } from './useAdaptiveCompactName'
 import type { PersonWithDisplay } from './types'
@@ -10,7 +12,14 @@ interface NameCellContentProps {
   isExtraCompact: boolean
 }
 
-const BONZI_FULL_NAME = #name
+const FULL_NAME_OVERRIDES = new Set(
+  (Array.isArray(fullNameOverridesConfig)
+    ? fullNameOverridesConfig
+    : []
+  )
+    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+    .map((name) => name.trim().toLowerCase())
+)
 
 export function NameCellContent({
   person,
@@ -18,8 +27,8 @@ export function NameCellContent({
   isExtraCompact,
 }: NameCellContentProps) {
   const normalizedName = person.resolvedName.trim().toLowerCase()
-  const isBonzi = normalizedName === BONZI_FULL_NAME
-  const showFullNameInCompact = isHorizontalScrollActive && isBonzi
+  const shouldForceFullName = FULL_NAME_OVERRIDES.has(normalizedName)
+  const showFullNameInCompact = isHorizontalScrollActive && shouldForceFullName
 
   const { ref: nameRef, style } = useAdaptiveCompactName(
     showFullNameInCompact,
@@ -27,7 +36,7 @@ export function NameCellContent({
   )
 
   const nameToDisplay = isHorizontalScrollActive
-    ? isBonzi
+    ? shouldForceFullName
       ? person.resolvedName
       : getNameAbbreviation(person.resolvedName)
     : person.resolvedName
