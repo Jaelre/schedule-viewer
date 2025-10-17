@@ -41,7 +41,11 @@ export function useAdaptiveCompactName(enabled: boolean, text: string): Adaptive
         return
       }
 
-      const availableWidth = targetContainer.clientWidth
+      const containerStyles = window.getComputedStyle(targetContainer)
+      const paddingLeft = Number.parseFloat(containerStyles.paddingLeft || '0') || 0
+      const paddingRight = Number.parseFloat(containerStyles.paddingRight || '0') || 0
+      const horizontalPadding = paddingLeft + paddingRight
+      const availableWidth = targetContainer.clientWidth - horizontalPadding
       if (availableWidth <= 0) {
         return
       }
