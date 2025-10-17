@@ -19,8 +19,8 @@ export function getNameAbbreviation(name: string): string {
   const surname = parts[0]
   const givenName = parts[parts.length - 1]
 
-  const surnameChunk = surname.slice(0, 4)
-  const givenNameChunk = givenName.slice(0, 3)
+  const surnameChunk = surname.slice(0, 3)
+  const givenNameChunk = givenName.slice(0, 1)
 
   return `${surnameChunk}${givenNameChunk}`
 }
