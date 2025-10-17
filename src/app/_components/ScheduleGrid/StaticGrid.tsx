@@ -3,9 +3,9 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { getDaysInMonth, isWeekend, isItalianHoliday } from '@/lib/date'
 import { ShiftCell } from './ShiftCell'
-import { getNameAbbreviation } from './utils'
 import { compactNameColumnWidth } from './types'
 import type { GridCommonProps, DensitySettings } from './types'
+import { NameCellContent } from './NameCellContent'
 
 interface StaticGridProps extends GridCommonProps {
   densitySettings: DensitySettings
@@ -105,22 +105,11 @@ export function StaticGrid({
               className={`sticky left-0 z-10 ${cellPadding} ${cellHeight} flex items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden border-b border-gray-300`}
               title={person.displayName}
             >
-              <span
-                className={`min-w-0 ${
-                  isHorizontalScrollActive ? 'flex-none font-semibold' : 'flex-1 truncate'
-                }`}
-              >
-                {isHorizontalScrollActive
-                  ? getNameAbbreviation(person.resolvedName)
-                  : person.resolvedName}
-              </span>
-              {!isHorizontalScrollActive && person.pseudonym && (
-                <span
-                  className={`ml-auto flex-none whitespace-nowrap ${isExtraCompact ? '' : 'pl-2'} text-right text-muted-foreground opacity-70`}
-                >
-                  {person.pseudonym}
-                </span>
-              )}
+              <NameCellContent
+                person={person}
+                isHorizontalScrollActive={isHorizontalScrollActive}
+                isExtraCompact={isExtraCompact}
+              />
             </div>
 
             {/* Shift Cells */}

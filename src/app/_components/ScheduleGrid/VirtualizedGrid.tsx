@@ -4,9 +4,9 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { getDaysInMonth, isWeekend, isItalianHoliday } from '@/lib/date'
 import { ShiftCell } from './ShiftCell'
-import { getNameAbbreviation } from './utils'
 import { compactNameColumnWidth } from './types'
 import type { GridCommonProps, DensitySettings } from './types'
+import { NameCellContent } from './NameCellContent'
 
 interface VirtualizedGridProps extends GridCommonProps {
   densitySettings: DensitySettings
@@ -120,22 +120,11 @@ export function VirtualizedGrid({
                 }}
                 title={person.displayName}
               >
-                <span
-                  className={`min-w-0 ${
-                    isHorizontalScrollActive ? 'flex-none font-semibold' : 'flex-1 truncate'
-                  }`}
-                >
-                  {isHorizontalScrollActive
-                    ? getNameAbbreviation(person.resolvedName)
-                    : person.resolvedName}
-                </span>
-                {!isHorizontalScrollActive && person.pseudonym && (
-                  <span
-                    className={`ml-auto flex-none whitespace-nowrap ${isExtraCompact ? '' : 'pl-2'} text-right text-muted-foreground opacity-70`}
-                  >
-                    {person.pseudonym}
-                  </span>
-                )}
+                <NameCellContent
+                  person={person}
+                  isHorizontalScrollActive={isHorizontalScrollActive}
+                  isExtraCompact={isExtraCompact}
+                />
               </div>
             )
           })}
