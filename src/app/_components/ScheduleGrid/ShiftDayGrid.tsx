@@ -5,6 +5,7 @@ import { isWeekend, isItalianHoliday } from '@/lib/date'
 import { getShiftColor } from '@/lib/colors'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import type { Density, DensitySettings, PersonWithDisplay } from './types'
+import { getNameAbbreviation } from './utils'
 
 type ShiftGridData = Pick<MonthShifts, 'ym' | 'rows' | 'shiftNames'>
 
@@ -234,24 +235,30 @@ export function ShiftDayGrid({
                   }}
                 >
                   {doctors.length > 0 ? (
-                    doctors.map((doctor) => (
-                      <div
-                        key={`${code}-${day}-${doctor.id}`}
-                        className="flex items-center gap-2 min-w-0 w-full"
-                        title={`${doctor.resolvedName}${doctor.pseudonym ? ` (${doctor.pseudonym})` : ''}`}
-                      >
-                        <span className={`font-medium truncate ${textSize}`}>
-                          {doctor.resolvedName}
-                        </span>
-                        {doctor.pseudonym && (
-                          <span
-                            className={`opacity-75 truncate ${placeholderText}`}
-                          >
-                            {doctor.pseudonym}
+                    doctors.map((doctor) => {
+                      const abbreviatedName = getNameAbbreviation(
+                        doctor.resolvedName
+                      )
+
+                      return (
+                        <div
+                          key={`${code}-${day}-${doctor.id}`}
+                          className="flex items-center gap-2 min-w-0 w-full"
+                          title={`${doctor.resolvedName}${doctor.pseudonym ? ` (${doctor.pseudonym})` : ''}`}
+                        >
+                          <span className={`font-medium truncate ${textSize}`}>
+                            {abbreviatedName || doctor.resolvedName}
                           </span>
-                        )}
-                      </div>
-                    ))
+                          {doctor.pseudonym && (
+                            <span
+                              className={`opacity-75 truncate ${placeholderText}`}
+                            >
+                              {doctor.pseudonym}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })
                   ) : (
                     <span className={`opacity-50 ${placeholderText}`}>
                       -
