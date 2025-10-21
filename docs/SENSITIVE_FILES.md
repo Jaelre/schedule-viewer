@@ -99,7 +99,7 @@ mkdir -p docs/private
 The following files and directories are automatically ignored by git:
 
 - `docs/private/` - Private documentation and sensitive files
-- `src/lib/doctor-names.json` - Staff roster with real names
+- `public/config/doctor-names.json` - Staff roster with real names served at runtime
 - `*.xlsx`, `*.xls`, `*.csv` - Spreadsheet files that may contain sensitive data
 - `**/sensitive/`, `**/confidential/` - Any directories marked as sensitive
 
