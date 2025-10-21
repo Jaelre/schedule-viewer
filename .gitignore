@@ -60,6 +60,16 @@ Thumbs.db
 .api-samples/
 
 # Sensitive information and private files
+docs/private/
+public/config/doctor-names.json
+public/config/full-name-overrides.json
+public/config/shift-colors.json
+public/config/shift-styling.config.json
+*.xlsx
+*.xls
+*.csv
+**/sensitive/
+**/confidential/
 # NOTE: Sensitive files are now tracked and encrypted via git-crypt (see .gitattributes)
 # Only truly generated/temporary files should be ignored here
 claudedocs/
