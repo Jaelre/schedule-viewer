@@ -2,11 +2,10 @@
 
 import { useMemo } from 'react'
 import { isWeekend, isItalianHoliday } from '@/lib/date'
-import { getShiftColor } from '@/lib/colors'
-import { resolveShiftLabel } from '@/lib/shift-labels'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import type { Density, DensitySettings, PersonWithDisplay } from './types'
 import { getNameAbbreviation } from './utils'
+import { useRuntimeConfig } from '@/lib/config/runtime-config'
 
 type ShiftGridData = Pick<MonthShifts, 'ym' | 'rows' | 'shiftNames'>
 
@@ -116,6 +115,7 @@ export function ShiftDayGrid({
   const { ym, rows, shiftNames } = data
   const { cellPadding, textSize, placeholderText, rowHeight } = densitySettings
   const gridGap = density === 'extra-compact' ? 0 : 1
+  const { getShiftColor } = useRuntimeConfig()
 
   const dayHeaders = useMemo(
     () => Array.from({ length: daysInMonth }, (_, i) => i + 1),

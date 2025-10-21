@@ -1,7 +1,7 @@
+'use client'
+
+import { useRuntimeConfig } from '@/lib/config/runtime-config'
 import { isWeekend, isItalianHoliday, isWeekday } from '@/lib/date'
-import { getShiftColor } from '@/lib/colors'
-import { getShiftDisplayCode } from '@/lib/shift-format'
-import { useShiftStylingConfig } from '@/lib/config-client'
 import type { DensitySettings } from './types'
 
 interface ShiftCellProps {
@@ -15,7 +15,7 @@ interface ShiftCellProps {
 
 export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCompact }: ShiftCellProps) {
   const { cellPadding, cellHeight, textSize, placeholderText, chipClass, chipGap } = densitySettings
-  const { data: stylingConfig } = useShiftStylingConfig()
+  const { getShiftColor, config } = useRuntimeConfig()
 
   const isWeekendDay = isWeekend(ym, day)
   const isHoliday = isItalianHoliday(ym, day)
@@ -33,20 +33,21 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
           className={`flex flex-col ${isExtraCompact ? 'items-stretch' : 'items-center'} justify-center min-w-0 ${chipGap}`}
         >
           {codes.map((code, idx) => {
-            const displayCode = getShiftDisplayCode(code)
+            const colors = getShiftColor(code)
+            const underlineConfig = config.shiftStyling.conditionalUnderline
             // Check if conditional underline should be applied
             const shouldUnderline =
-              stylingConfig?.conditionalUnderline &&
-              code === stylingConfig.conditionalUnderline.shiftCode &&
-              isWeekday(ym, day, stylingConfig.conditionalUnderline.weekdays)
+              underlineConfig !== undefined &&
+              code === underlineConfig.shiftCode &&
+              isWeekday(ym, day, underlineConfig.weekdays)
 
             return (
               <span
                 key={`${personId}-${day}-${idx}`}
                 className={`${isExtraCompact ? 'w-full px-1.5 py-1' : 'rounded'} font-semibold whitespace-nowrap ${isExtraCompact ? 'text-[0.7rem] leading-tight' : chipClass} ${shouldUnderline ? 'overline' : ''}`}
                 style={{
-                  backgroundColor: getShiftColor(code).background,
-                  color: getShiftColor(code).text,
+                  backgroundColor: colors.background,
+                  color: colors.text,
                 }}
                 title={code}
               >

@@ -1,4 +1,4 @@
-import { getDoctorDisplayName } from '@/lib/doctor-names'
+import type { DoctorDisplayName } from '@/lib/doctor-names'
 import type { Person } from '@/lib/types'
 import type { PersonWithDisplay, Density } from './types'
 import { densityHorizontalPadding, defaultNameColumnWidths, pseudonymPadding, widthBuffer } from './types'
@@ -26,10 +26,16 @@ export function getNameAbbreviation(name: string): string {
   return `${surnameChunk}${givenNameChunk}`
 }
 
-export function preparePeopleWithNames(people: Person[]): PersonWithDisplay[] {
+export function preparePeopleWithNames(
+  people: Person[],
+  resolveDisplayName: (
+    id: string | number,
+    apiName?: string
+  ) => DoctorDisplayName
+): PersonWithDisplay[] {
   return people
     .map((person, index) => {
-      const displayInfo = getDoctorDisplayName(person.id, person.name)
+      const displayInfo = resolveDisplayName(person.id, person.name)
 
       return {
         ...person,
