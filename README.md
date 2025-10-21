@@ -5,8 +5,8 @@ Monthly schedule explorer for emergency department shifts. The UI is built with 
 ## Highlights
 - Virtualised month grid renders 100+ clinicians smoothly, with multi-shift-per-day support and density toggle.
 - Italian locale by default (Europe/Rome timezone, Italian labels and holidays).
-- Deterministic, accessible colour palette with overrides in `src/lib/shift-colors.json`.
-- Configurable dictionary for shift labels via `NEXT_PUBLIC_SHIFT_CODE_DICT` and doctor name mapping via `src/lib/doctor-names.json`.
+- Deterministic, accessible colour palette with overrides in `public/config/shift-colors.json`.
+- Configurable dictionary for shift labels via `NEXT_PUBLIC_SHIFT_CODE_DICT` and doctor name mapping via `public/config/doctor-names.json`.
 - Cloudflare Worker proxies all data access, injects secrets, retries upstream failures and keeps a short-lived in-memory cache.
 - Client refreshes data every 10 minutes and surfaces clear loading/error states.
 - Schedule access is gated by a worker-managed password exchange: clients `POST /api/access`, stash the returned token in `localStorage` and send it as an `Authorization` header to `/api/check-access` before fetching schedules (see [docs/access-gate.md](docs/access-gate.md#worker-managed-client-token-flow)).
@@ -69,7 +69,7 @@ schedule-viewer/
 
 4. (Optional) adjust local dictionaries and styling overrides:
    - The static export reads JSON files from `public/config/*.json`. Update those files directly (or replace them in Cloudflare Pages) to change doctor names, colour palettes, or styling without rebuilding the site.
-   - Reference the templates under `src/config/*.example` when creating new runtime JSON files.
+   - Reference the templates under `public/config` (e.g. `doctor-names.json.example`, `shift-styling.config.example.json`) when creating new runtime JSON files.
 
 5. Start the Next.js dev server:
 
@@ -171,7 +171,7 @@ Error envelope:
 - **Missing API token**: run `wrangler secret put API_TOKEN` in `worker/` and redeploy/restart.
 - **Frontend shows empty grid**: verify the Worker URL in `.env.local` and check the browser console for errors from `/api/shifts`.
 - **Upstream timeouts**: consider raising `API_TIMEOUT_MS` in `worker/wrangler.toml`; the Worker currently retries twice before surfacing `UPSTREAM_TIMEOUT`.
-- **Styling issues after colour changes**: ensure HSL values in `src/lib/shift-colors.json` maintain sufficient contrast; the fallback generator covers undefined codes.
+- **Styling issues after colour changes**: ensure HSL values in `public/config/shift-colors.json` maintain sufficient contrast; the fallback generator covers undefined codes.
 
 ## License
 

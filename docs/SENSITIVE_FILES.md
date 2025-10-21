@@ -6,15 +6,15 @@ This project requires certain files containing sensitive information (staff name
 
 ### 1. Doctor Names Dictionary
 
-**File**: `src/lib/doctor-names.json`
+**File**: `public/config/doctor-names.json`
 
 Copy the example file and populate with actual staff names:
 
 ```bash
-cp src/lib/doctor-names.json.example src/lib/doctor-names.json
+cp public/config/doctor-names.json.example public/config/doctor-names.json
 ```
 
-Then edit `src/lib/doctor-names.json` to add the real staff roster.
+Then edit `public/config/doctor-names.json` to add the real staff roster.
 
 **Important**: Use the exact pseudonyms/IDs that the API returns as the keys!
 
@@ -49,15 +49,15 @@ The app will try multiple matching approaches:
 
 ### 2. Shift Color Configuration
 
-**File**: `src/lib/shift-colors.json`
+**File**: `public/config/shift-colors.json`
 
 Customize shift code colors by copying the example file:
 
 ```bash
-cp src/lib/shift-colors.json.example src/lib/shift-colors.json
+cp public/config/shift-colors.json.example public/config/shift-colors.json
 ```
 
-Then edit `src/lib/shift-colors.json` to customize colors for specific shift codes.
+Then edit `public/config/shift-colors.json` to customize colors for specific shift codes.
 
 **Format**:
 
@@ -100,6 +100,9 @@ The following files and directories are automatically ignored by git:
 
 - `docs/private/` - Private documentation and sensitive files
 - `public/config/doctor-names.json` - Staff roster with real names served at runtime
+- `public/config/full-name-overrides.json` - Optional overrides for matching case variations of doctor names
+- `public/config/shift-colors.json` - Custom colour palette for shift codes
+- `public/config/shift-styling.config.json` - Local styling adjustments for rendered shifts
 - `*.xlsx`, `*.xls`, `*.csv` - Spreadsheet files that may contain sensitive data
 - `**/sensitive/`, `**/confidential/` - Any directories marked as sensitive
 
