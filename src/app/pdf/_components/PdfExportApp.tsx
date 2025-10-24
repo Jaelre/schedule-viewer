@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MonthNav } from '@/app/_components/MonthNav'
 import { LegendModal } from '@/app/_components/LegendModal'
@@ -8,6 +8,7 @@ import { getCurrentYM, isValidYM, formatMonthDisplay } from '@/lib/date'
 import { useMonthShifts } from '@/lib/api-client'
 import { shiftCodeMap } from '@/lib/shift-code-map'
 import { exportShiftsToPdf } from '@/lib/pdf/exportShiftsToPdf'
+import { PrintableSchedule } from './PrintableSchedule'
 
 export function PdfExportApp() {
   const searchParams = useSearchParams()
@@ -19,6 +20,7 @@ export function PdfExportApp() {
   const [isLegendOpen, setIsLegendOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const printableRef = useRef<HTMLDivElement>(null)
 
   const monthLabel = useMemo(() => formatMonthDisplay(currentYM), [currentYM])
 
@@ -30,7 +32,7 @@ export function PdfExportApp() {
     setExportError(null)
     setIsExporting(true)
     try {
-      await exportShiftsToPdf(data)
+      await exportShiftsToPdf(data, printableRef.current)
     } catch (err) {
       console.error('Failed to export PDF', err)
       setExportError(
@@ -45,8 +47,8 @@ export function PdfExportApp() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
           <MonthNav currentYM={currentYM} basePath="/pdf" />
           <div className="flex flex-wrap gap-2">
             <button
@@ -60,7 +62,7 @@ export function PdfExportApp() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm space-y-4 print:hidden">
           <div className="space-y-1">
             <h1 className="text-xl font-semibold">Esporta turni in PDF</h1>
             <p className="text-sm text-muted-foreground">
@@ -78,14 +80,19 @@ export function PdfExportApp() {
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={!data || isLoading || isExporting || !!error}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isExporting ? 'Generazione PDF in corso…' : 'Scarica PDF'}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={!data || isLoading || isExporting || !!error}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isExporting ? 'Preparazione stampa…' : 'Stampa o salva in PDF'}
+            </button>
+            <p className="text-xs text-muted-foreground">
+              Il PDF utilizza il layout mostrato in anteprima qui sotto.
+            </p>
+          </div>
         </div>
 
         {isLoading && (
@@ -116,6 +123,12 @@ export function PdfExportApp() {
         {data && data.people.length === 0 && !isLoading && !error && (
           <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
             Nessun turno disponibile per questo mese.
+          </div>
+        )}
+
+        {data && (
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm print:border-0 print:bg-transparent print:p-0">
+            <PrintableSchedule ref={printableRef} month={data} />
           </div>
         )}
 
