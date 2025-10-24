@@ -1,7 +1,4 @@
 import type { MonthShifts } from '@/lib/types'
-import { getDaysInMonth } from '@/lib/date'
-import { getDoctorDisplayName } from '@/lib/doctor-names'
-import { getShiftDisplayCode } from '@/lib/shift-format'
 
 /**
  * Prepara la pagina per la stampa e avvia il dialog di stampa del browser.
@@ -70,17 +67,18 @@ export async function exportShiftsToPdf(
 
       window.addEventListener('afterprint', handleAfterPrint)
 
-    for (let day = 0; day < daysInMonth; day += 1) {
-      const codes = month.rows[personIndex]?.[day] ?? []
-      if (codes && codes.length > 0) {
-        const compactCodes = codes
-          .map(code => getShiftDisplayCode(code))
-          .filter(value => value.length > 0)
-
-        personRow.push(compactCodes.length > 0 ? compactCodes.join(', ') : '-')
-      } else {
-        personRow.push('-')
+      if (mediaQueryList) {
+        if ('addEventListener' in mediaQueryList) {
+          mediaQueryList.addEventListener('change', handleMediaChange as EventListener)
+        } else {
+          const legacyMediaQueryList = mediaQueryList as MediaQueryListWithLegacy
+          legacyMediaQueryList.addListener?.(handleMediaChange)
+        }
       }
+
+      fallbackId = window.setTimeout(() => {
+        cleanup()
+      }, 60000)
 
       document.title = downloadTitle
       printableRoot.scrollIntoView({ block: 'start' })
@@ -88,10 +86,6 @@ export async function exportShiftsToPdf(
       requestAnimationFrame(() => {
         window.focus()
         window.print()
-
-        fallbackId = window.setTimeout(() => {
-          cleanup()
-        }, 60000)
       })
     })
 
