@@ -1,6 +1,7 @@
 import shiftStylingConfig from '@/config/shift-styling.config.json'
 import { isWeekend, isItalianHoliday, isWeekday } from '@/lib/date'
 import { getShiftColor } from '@/lib/colors'
+import { getShiftDisplayCode } from '@/lib/shift-format'
 import type { DensitySettings } from './types'
 
 type ShiftStylingConfig = {
@@ -40,6 +41,7 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
           className={`flex flex-col ${isExtraCompact ? 'items-stretch' : 'items-center'} justify-center min-w-0 ${chipGap}`}
         >
           {codes.map((code, idx) => {
+            const displayCode = getShiftDisplayCode(code)
             // Check if conditional underline should be applied
             const shouldUnderline =
               resolvedShiftStylingConfig.conditionalUnderline &&
@@ -56,7 +58,7 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
                 }}
                 title={code}
               >
-                {code}
+                {displayCode}
               </span>
             )
           })}
