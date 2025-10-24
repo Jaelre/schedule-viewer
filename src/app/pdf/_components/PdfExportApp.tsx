@@ -70,9 +70,7 @@ export function PdfExportApp() {
             </p>
           </div>
 
-          <p className="text-sm text-muted-foreground">
-            L&apos;esportazione avviene interamente nel browser: nessun dato aggiuntivo viene inviato al server.
-          </p>
+          
 
           {exportError && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
