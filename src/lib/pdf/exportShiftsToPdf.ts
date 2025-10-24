@@ -125,43 +125,87 @@ function buildPdfDocument(pages: string[][]): string {
   return output
 }
 
-function formatShiftSummary(month: MonthShifts): string[] {
-  const daysInMonth = getDaysInMonth(month.ym)
+function padCell(value: string, width: number): string {
+  if (value.length >= width) {
+    return value
+  }
+
+  return `${value}${' '.repeat(width - value.length)}`
+}
+
+function buildTableLines(header: string[], rows: string[][]): string[] {
+  const columnWidths = header.map((_, columnIndex) => {
+    const headerWidth = header[columnIndex]?.length ?? 0
+    const rowWidth = rows.reduce((max, row) => {
+      const cell = row[columnIndex] ?? ''
+      return Math.max(max, cell.length)
+    }, 0)
+
+    return Math.max(headerWidth, rowWidth)
+  })
+
+  const separator = `+-${columnWidths.map(width => '-'.repeat(width)).join('-+-')}-+`
+  const formatRow = (row: string[]) =>
+    `| ${row
+      .map((cell, index) => padCell(cell ?? '', columnWidths[index] ?? 0))
+      .join(' | ')} |`
+
   const lines: string[] = []
+  lines.push(separator)
+  lines.push(formatRow(header))
+  lines.push(separator)
+  rows.forEach(row => {
+    lines.push(formatRow(row))
+  })
+  lines.push(separator)
+
+  return lines
+}
+
+function formatShiftGrid(month: MonthShifts): string[] {
+  const daysInMonth = getDaysInMonth(month.ym)
   const title = `Turni ${formatMonthLabel(month.ym)}`
   const timestamp = new Intl.DateTimeFormat('it-IT', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date())
 
-  lines.push(title)
-  lines.push(`Esportato il ${timestamp}`)
-  lines.push('')
-
+  const header = ['Medico']
   for (let day = 1; day <= daysInMonth; day += 1) {
-    lines.push(`Giorno ${day}`)
+    header.push(`${day}`)
+  }
 
-    let assignments = 0
+  const rows: string[][] = month.people.map((person, personIndex) => {
+    const personRow: string[] = [person.name]
 
-    month.people.forEach((person, personIndex) => {
-      const codes = month.rows[personIndex]?.[day - 1] ?? []
+    for (let day = 0; day < daysInMonth; day += 1) {
+      const codes = month.rows[personIndex]?.[day] ?? []
       if (codes && codes.length > 0) {
-        assignments += 1
         const label = codes
           .map(code => {
             const friendly = month.shiftNames?.[code]
-            return friendly ? `${code} – ${friendly}` : code
+            return friendly ? `${code} (${friendly})` : code
           })
           .join(', ')
-        lines.push(`  ${person.name}: ${label}`)
+        personRow.push(label)
+      } else {
+        personRow.push('-')
       }
-    })
-
-    if (assignments === 0) {
-      lines.push('  Nessun turno assegnato')
     }
 
+    return personRow
+  })
+
+  const gridLines = buildTableLines(header, rows)
+  const lines: string[] = [title, `Esportato il ${timestamp}`, '', ...gridLines]
+
+  if (month.codes && month.codes.length > 0) {
     lines.push('')
+    lines.push('Legenda codici:')
+    month.codes.forEach(code => {
+      const friendly = month.shiftNames?.[code]
+      lines.push(`  ${code}${friendly ? ` – ${friendly}` : ''}`)
+    })
   }
 
   return lines
@@ -175,7 +219,7 @@ export async function exportShiftsToPdf(month: MonthShifts): Promise<void> {
     throw new Error('L\'esportazione PDF è disponibile solo nel browser')
   }
 
-  const allLines = formatShiftSummary(month)
+  const allLines = formatShiftGrid(month)
   const availableHeight = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
   const maxLinesPerPage = Math.max(1, Math.floor(availableHeight / LINE_HEIGHT))
   const pages: string[][] = []
