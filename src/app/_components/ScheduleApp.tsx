@@ -11,7 +11,11 @@ import { ScheduleGrid } from './ScheduleGrid'
 import type { ViewMode } from './ScheduleGrid/types'
 import { LegendModal } from './LegendModal'
 
-export function ScheduleApp() {
+interface ScheduleAppProps {
+  basePath?: string
+}
+
+export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
   const searchParams = useSearchParams()
   const ymParam = searchParams.get('ym')
 
@@ -27,7 +31,7 @@ export function ScheduleApp() {
     <div className="min-h-screen bg-background">
       <div className="max-w-full space-y-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2 bg-card border-b border-border">
-          <MonthNav currentYM={currentYM} />
+          <MonthNav currentYM={currentYM} basePath={basePath} />
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <DensityToggle
               onDensityChange={setDensity}
@@ -104,7 +108,7 @@ export function ScheduleApp() {
   )
 }
 
-export function ScheduleAppWithSuspense() {
+export function ScheduleAppWithSuspense({ basePath = '/' }: ScheduleAppProps) {
   return (
     <Suspense
       fallback={
@@ -113,7 +117,7 @@ export function ScheduleAppWithSuspense() {
         </div>
       }
     >
-      <ScheduleApp />
+      <ScheduleApp basePath={basePath} />
     </Suspense>
   )
 }

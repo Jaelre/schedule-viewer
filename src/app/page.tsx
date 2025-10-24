@@ -4,7 +4,7 @@ import { ScheduleAppWithSuspense } from './_components/ScheduleApp'
 export default function Page() {
   return (
     <PasswordGate>
-      <ScheduleAppWithSuspense />
+      <ScheduleAppWithSuspense basePath="/" />
     </PasswordGate>
   )
 }

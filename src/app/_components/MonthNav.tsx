@@ -6,16 +6,18 @@ import { getPreviousYM, getNextYM, formatMonthDisplay } from '@/lib/date'
 
 interface MonthNavProps {
   currentYM: string
+  basePath?: string
 }
 
-export function MonthNav({ currentYM }: MonthNavProps) {
+export function MonthNav({ currentYM, basePath = '/' }: MonthNavProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const navigateToMonth = (ym: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('ym', ym)
-    router.push(`/?${params.toString()}`)
+    const queryString = params.toString()
+    router.push(queryString ? `${basePath}?${queryString}` : basePath)
   }
 
   const handlePrevious = () => {
