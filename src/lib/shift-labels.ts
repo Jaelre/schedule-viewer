@@ -24,5 +24,5 @@ export function resolveShiftLabel(
     return overrideFromRaw
   }
 
-  return normalized || code
+  return label || normalized || code
 }
