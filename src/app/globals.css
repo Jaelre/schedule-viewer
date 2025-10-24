@@ -30,3 +30,46 @@
 .grid-cell {
   @apply text-center;
 }
+
+@page {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+@media print {
+  html,
+  body {
+    width: 100%;
+    background: #ffffff !important;
+  }
+
+  body {
+    color: #111827;
+  }
+
+  .pdf-print-area {
+    width: 100%;
+    max-width: calc(297mm - 20mm);
+    margin: 0 auto;
+    background: #ffffff;
+    color: #111827;
+  }
+
+  .pdf-print-table {
+    page-break-inside: auto;
+  }
+
+  .pdf-print-table thead {
+    display: table-header-group;
+  }
+
+  .pdf-print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .page-break-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
