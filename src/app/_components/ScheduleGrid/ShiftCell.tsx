@@ -49,7 +49,7 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
             return (
               <span
                 key={`${personId}-${day}-${idx}`}
-                className={`${isExtraCompact ? 'w-full px-1.5 py-1' : 'rounded'} font-semibold whitespace-nowrap ${isExtraCompact ? 'text-[0.7rem] leading-tight' : chipClass} ${shouldUnderline ? 'underline' : ''}`}
+                className={`${isExtraCompact ? 'w-full px-1.5 py-1' : 'rounded'} font-semibold whitespace-nowrap ${isExtraCompact ? 'text-[0.7rem] leading-tight' : chipClass} ${shouldUnderline ? 'overline' : ''}`}
                 style={{
                   backgroundColor: getShiftColor(code).background,
                   color: getShiftColor(code).text,
