@@ -3,6 +3,7 @@
 import { forwardRef, useMemo } from 'react'
 import { getDaysInMonth, isItalianHoliday, isWeekend } from '@/lib/date'
 import { getDoctorDisplayName } from '@/lib/doctor-names'
+import { resolveShiftLabel } from '@/lib/shift-labels'
 import type { MonthShifts } from '@/lib/types'
 
 interface PrintableScheduleProps {
@@ -122,7 +123,7 @@ export const PrintableSchedule = forwardRef<HTMLDivElement, PrintableSchedulePro
             <h3 className="mb-2 font-semibold">Legenda codici</h3>
             <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {month.codes.map(code => {
-                const friendly = month.shiftNames?.[code]
+                const friendly = resolveShiftLabel(code, month.shiftNames)
                 return (
                   <li key={code} className="flex gap-2">
                     <span className="font-semibold">{code}</span>

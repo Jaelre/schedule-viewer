@@ -1,0 +1,10 @@
+{
+  "comment": "Shift label normalization and overrides. Copy to shift-display.config.json to customize the display text for specific codes.",
+  "aliases": {
+    "night": "N",
+    "nights": "N"
+  },
+  "labels": {
+    "N": "N"
+  }
+}

@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { isWeekend, isItalianHoliday } from '@/lib/date'
 import { getShiftColor } from '@/lib/colors'
+import { resolveShiftLabel } from '@/lib/shift-labels'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import type { Density, DensitySettings, PersonWithDisplay } from './types'
 import { getNameAbbreviation } from './utils'
@@ -90,15 +91,6 @@ function getShiftOrder(
   return order
 }
 
-function getShiftLabel(
-  code: string,
-  shiftNames?: Record<string, string>,
-  codeMap?: ShiftCodeMap
-) {
-  const fallback = shiftNames?.[code] || codeMap?.[code]?.label
-  return fallback || code
-}
-
 function getShiftSubtitle(code: string, label: string): string | null {
   if (!label) return null
   if (label === code) return null
@@ -184,7 +176,7 @@ export function ShiftDayGrid({
       })}
 
       {shiftOrder.map((code) => {
-        const label = getShiftLabel(code, shiftNames, codeMap)
+        const label = resolveShiftLabel(code, shiftNames, codeMap)
         const subtitle = getShiftSubtitle(code, label)
         const shiftColor = getShiftColor(code)
 

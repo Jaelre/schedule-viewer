@@ -82,7 +82,19 @@ Then edit `src/lib/shift-colors.json` to customize colors for specific shift cod
 
 Colors use HSL format for easy adjustment. Codes not defined will auto-generate colors using the fallback parameters.
 
-### 3. Private Documentation
+### 3. Shift Display Configuration
+
+**File**: `src/config/shift-display.config.json`
+
+Copy the example configuration:
+
+```
+cp src/config/shift-display.config.example.json src/config/shift-display.config.json
+```
+
+Then edit the `aliases` map to collapse upstream names (for example, mapping `Nights` to `N`) and the `labels` map to override the text surfaced in the legend, grid, and PDF.
+
+### 4. Private Documentation
 
 **Directory**: `docs/private/`
 
@@ -100,6 +112,7 @@ The following files and directories are automatically ignored by git:
 
 - `docs/private/` - Private documentation and sensitive files
 - `src/lib/doctor-names.json` - Staff roster with real names
+- `src/config/shift-display.config.json` - Local overrides for label normalisation
 - `*.xlsx`, `*.xls`, `*.csv` - Spreadsheet files that may contain sensitive data
 - `**/sensitive/`, `**/confidential/` - Any directories marked as sensitive
 
