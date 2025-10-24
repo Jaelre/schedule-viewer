@@ -16,8 +16,8 @@ export function MonthNav({ currentYM, basePath = '/' }: MonthNavProps) {
   const navigateToMonth = (ym: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('ym', ym)
-    const queryString = params.toString()
-    router.push(queryString ? `${basePath}?${queryString}` : basePath)
+    const path = basePath.endsWith('/') && basePath !== '/' ? basePath.slice(0, -1) : basePath
+    router.push(`${path}?${params.toString()}`)
   }
 
   const handlePrevious = () => {
