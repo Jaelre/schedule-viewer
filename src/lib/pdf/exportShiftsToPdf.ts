@@ -1,12 +1,20 @@
 import type { MonthShifts } from '@/lib/types'
 import { getDaysInMonth } from '@/lib/date'
+import { getDoctorDisplayName } from '@/lib/doctor-names'
 
-const PAGE_WIDTH = 595.28
-const PAGE_HEIGHT = 841.89
-const TOP_MARGIN = 50
-const BOTTOM_MARGIN = 50
+const PAGE_WIDTH = 841.89
+const PAGE_HEIGHT = 595.28
+const TOP_MARGIN = 40
+const BOTTOM_MARGIN = 40
 const LEFT_MARGIN = 40
-const LINE_HEIGHT = 18
+const RIGHT_MARGIN = 40
+const LINE_HEIGHT = 12
+const DEFAULT_FONT_SIZE = 7
+
+type PageLine = {
+  text: string
+  fontSize?: number
+}
 const utf8Encoder = new TextEncoder()
 
 function formatMonthLabel(ym: string): string {
@@ -23,7 +31,7 @@ function escapePdfText(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)')
 }
 
-function buildPageStream(lines: string[]): string {
+function buildPageStream(lines: PageLine[]): string {
   const availableHeight = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
   const maxLines = Math.max(1, Math.floor(availableHeight / LINE_HEIGHT))
   const pageLines = lines.slice(0, maxLines)
@@ -31,17 +39,25 @@ function buildPageStream(lines: string[]): string {
   const startY = PAGE_HEIGHT - TOP_MARGIN
   const commands = [
     'BT',
-    '/F1 12 Tf',
+    `/F1 ${DEFAULT_FONT_SIZE} Tf`,
     `${LINE_HEIGHT} TL`,
     `${LEFT_MARGIN} ${startY} Td`,
   ]
+
+  let currentFontSize = DEFAULT_FONT_SIZE
 
   pageLines.forEach((line, lineIndex) => {
     if (lineIndex !== 0) {
       commands.push('T*')
     }
 
-    const printable = line.trim().length > 0 ? line : ' '
+    const fontSize = line.fontSize ?? DEFAULT_FONT_SIZE
+    if (fontSize !== currentFontSize) {
+      commands.push(`/F1 ${fontSize} Tf`)
+      currentFontSize = fontSize
+    }
+
+    const printable = line.text.trim().length > 0 ? line.text : ' '
     commands.push(`(${escapePdfText(printable)}) Tj`)
   })
 
@@ -50,7 +66,7 @@ function buildPageStream(lines: string[]): string {
   return commands.join('\n')
 }
 
-function buildPdfDocument(pages: string[][]): string {
+function buildPdfDocument(pages: PageLine[][]): string {
   const objects: { body: string }[] = []
 
   const addObject = (body: string): number => {
@@ -58,7 +74,7 @@ function buildPdfDocument(pages: string[][]): string {
     return objects.length
   }
 
-  const fontObject = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')
+  const fontObject = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>')
   const pageObjectIndexes: number[] = []
 
   pages.forEach(pageLines => {
@@ -162,7 +178,7 @@ function buildTableLines(header: string[], rows: string[][]): string[] {
   return lines
 }
 
-function formatShiftGrid(month: MonthShifts): string[] {
+function formatShiftGrid(month: MonthShifts): PageLine[][] {
   const daysInMonth = getDaysInMonth(month.ym)
   const title = `Turni ${formatMonthLabel(month.ym)}`
   const timestamp = new Intl.DateTimeFormat('it-IT', {
@@ -176,7 +192,8 @@ function formatShiftGrid(month: MonthShifts): string[] {
   }
 
   const rows: string[][] = month.people.map((person, personIndex) => {
-    const personRow: string[] = [person.name]
+    const displayName = getDoctorDisplayName(person.id, person.name).display
+    const personRow: string[] = [displayName]
 
     for (let day = 0; day < daysInMonth; day += 1) {
       const codes = month.rows[personIndex]?.[day] ?? []
@@ -197,18 +214,51 @@ function formatShiftGrid(month: MonthShifts): string[] {
   })
 
   const gridLines = buildTableLines(header, rows)
-  const lines: string[] = [title, `Esportato il ${timestamp}`, '', ...gridLines]
+  const tableLines: PageLine[] = gridLines.map(text => ({ text }))
 
+  const headerTemplate: PageLine[] = [
+    { text: title, fontSize: 10 },
+    { text: `Esportato il ${timestamp}` },
+    { text: '' },
+  ]
+  const availableHeight = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
+  const baseMaxLines = Math.max(1, Math.floor(availableHeight / LINE_HEIGHT))
+  const maxLinesPerPage = Math.max(baseMaxLines, headerTemplate.length + 1)
+
+  const legendLines: PageLine[] = []
   if (month.codes && month.codes.length > 0) {
-    lines.push('')
-    lines.push('Legenda codici:')
+    legendLines.push({ text: '' })
+    legendLines.push({ text: 'Legenda codici:' })
     month.codes.forEach(code => {
       const friendly = month.shiftNames?.[code]
-      lines.push(`  ${code}${friendly ? ` – ${friendly}` : ''}`)
+      legendLines.push({ text: `  ${code}${friendly ? ` – ${friendly}` : ''}` })
     })
   }
 
-  return lines
+  const cloneHeader = (): PageLine[] => headerTemplate.map(line => ({ ...line }))
+  const pages: PageLine[][] = []
+  let currentPage: PageLine[] = cloneHeader()
+
+  const pushCurrentPage = () => {
+    if (currentPage.length > 0) {
+      pages.push(currentPage)
+    }
+  }
+
+  const appendLine = (line: PageLine) => {
+    if (currentPage.length >= maxLinesPerPage) {
+      pushCurrentPage()
+      currentPage = cloneHeader()
+    }
+    currentPage.push(line)
+  }
+
+  tableLines.forEach(appendLine)
+  legendLines.forEach(appendLine)
+
+  pushCurrentPage()
+
+  return pages
 }
 
 /**
@@ -219,14 +269,7 @@ export async function exportShiftsToPdf(month: MonthShifts): Promise<void> {
     throw new Error('L\'esportazione PDF è disponibile solo nel browser')
   }
 
-  const allLines = formatShiftGrid(month)
-  const availableHeight = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
-  const maxLinesPerPage = Math.max(1, Math.floor(availableHeight / LINE_HEIGHT))
-  const pages: string[][] = []
-
-  for (let index = 0; index < allLines.length; index += maxLinesPerPage) {
-    pages.push(allLines.slice(index, index + maxLinesPerPage))
-  }
+  const pages = formatShiftGrid(month)
   const pdfContent = buildPdfDocument(pages)
 
   const blob = new Blob([pdfContent], { type: 'application/pdf' })
