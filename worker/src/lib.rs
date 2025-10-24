@@ -27,6 +27,127 @@ struct CachedSchedule {
 static SCHEDULE_CACHE: Lazy<RwLock<HashMap<String, CachedSchedule>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
+#[derive(Deserialize, Default)]
+struct RawShiftDisplayConfig {
+    #[serde(default)]
+    aliases: HashMap<String, String>,
+    #[serde(default)]
+    labels: HashMap<String, String>,
+}
+
+struct ShiftDisplayConfig {
+    alias_map: HashMap<String, String>,
+    label_map: HashMap<String, String>,
+}
+
+impl Default for ShiftDisplayConfig {
+    fn default() -> Self {
+        ShiftDisplayConfig {
+            alias_map: HashMap::new(),
+            label_map: HashMap::new(),
+        }
+    }
+}
+
+impl From<RawShiftDisplayConfig> for ShiftDisplayConfig {
+    fn from(raw: RawShiftDisplayConfig) -> Self {
+        let mut alias_map = HashMap::new();
+        for (key, value) in raw.aliases.into_iter() {
+            let trimmed_key = key.trim().to_lowercase();
+            let trimmed_value = value.trim().to_string();
+            if trimmed_key.is_empty() || trimmed_value.is_empty() {
+                continue;
+            }
+            alias_map.insert(trimmed_key, trimmed_value);
+        }
+
+        let mut label_map = HashMap::new();
+        for (key, value) in raw.labels.into_iter() {
+            let trimmed_key = key.trim().to_string();
+            let trimmed_value = value.trim().to_string();
+            if trimmed_key.is_empty() || trimmed_value.is_empty() {
+                continue;
+            }
+            label_map.insert(trimmed_key.clone(), trimmed_value.clone());
+            label_map.insert(trimmed_key.to_uppercase(), trimmed_value.clone());
+            label_map.insert(trimmed_key.to_lowercase(), trimmed_value.clone());
+        }
+
+        ShiftDisplayConfig {
+            alias_map,
+            label_map,
+        }
+    }
+}
+
+impl ShiftDisplayConfig {
+    fn normalize_token(&self, input: &str) -> String {
+        let trimmed = input.trim();
+        if trimmed.is_empty() {
+            return String::new();
+        }
+
+        let lookup_key = trimmed.to_lowercase();
+        if let Some(value) = self.alias_map.get(&lookup_key) {
+            return value.clone();
+        }
+
+        if let Some(first_chunk) = trimmed.split_whitespace().next() {
+            let chunk_key = first_chunk.trim().to_lowercase();
+            if let Some(value) = self.alias_map.get(&chunk_key) {
+                return value.clone();
+            }
+        }
+
+        trimmed.to_string()
+    }
+
+    fn label_override(&self, key: &str) -> Option<String> {
+        if key.trim().is_empty() {
+            return None;
+        }
+
+        let trimmed = key.trim();
+        self.label_map
+            .get(trimmed)
+            .cloned()
+            .or_else(|| self.label_map.get(&trimmed.to_uppercase()).cloned())
+            .or_else(|| self.label_map.get(&trimmed.to_lowercase()).cloned())
+    }
+
+    fn resolve_label(&self, code: &str, raw_label: &str) -> String {
+        if let Some(override_label) = self.label_override(code) {
+            return override_label;
+        }
+
+        let normalized = self.normalize_token(raw_label);
+        if let Some(override_label) = self.label_override(&normalized) {
+            return override_label;
+        }
+
+        if let Some(override_label) = self.label_override(raw_label) {
+            return override_label;
+        }
+
+        if normalized.is_empty() {
+            return code.to_string();
+        }
+
+        normalized
+    }
+}
+
+static SHIFT_DISPLAY_CONFIG: Lazy<ShiftDisplayConfig> = Lazy::new(|| {
+    let raw_json = include_str!("../../src/config/shift-display.config.json");
+    match serde_json::from_str::<RawShiftDisplayConfig>(raw_json) {
+        Ok(raw) => ShiftDisplayConfig::from(raw),
+        Err(error) => {
+            console_log!("Failed to parse shift display config: {:?}", error);
+            ShiftDisplayConfig::default()
+        }
+    }
+});
+
 // Frontend types (MonthShifts contract)
 #[derive(Serialize)]
 struct MonthShifts {
@@ -397,8 +518,8 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
         let code = extract_shift_code(&shift.shift.alias);
         if !code.is_empty() {
             shift_codes.insert(code.clone());
-            // Map the abbreviation to the full alias string
-            shift_names.insert(code, shift.shift.alias.clone());
+            let resolved_label = SHIFT_DISPLAY_CONFIG.resolve_label(&code, &shift.shift.alias);
+            shift_names.insert(code.clone(), resolved_label);
         }
     }
 
@@ -489,13 +610,19 @@ fn extract_day_from_datetime(datetime: &str) -> Option<usize> {
 fn extract_shift_code(alias: &str) -> String {
     // Extract shift code from alias like "RATM 8:00AM - 2:00PM" -> "RATM"
     // or "FT 8:30am - 6:30" -> "FT"
-    // Just take everything before the first space or digit
-    alias
+    // Just take everything before the first space or digit and normalise using config
+    let token = alias
         .split_whitespace()
         .next()
         .unwrap_or(alias)
-        .trim()
-        .to_string()
+        .trim();
+
+    let normalised = SHIFT_DISPLAY_CONFIG.normalize_token(token);
+    if normalised.is_empty() {
+        return token.to_string();
+    }
+
+    normalised
 }
 
 fn has_access_token(req: &Request, ctx: &RouteContext<()>) -> bool {

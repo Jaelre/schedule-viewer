@@ -71,6 +71,7 @@ schedule-viewer/
 4. (Optional) adjust local dictionaries and styling overrides:
    - Copy `src/config/doctor-names.json.example` to `src/config/doctor-names.json` and edit the `names` map to control how IDs render in the grid.
    - Copy `src/config/shift-colors.json.example` to `src/config/shift-colors.json` if you need to fine-tune colour contrast per shift code.
+   - Copy `src/config/shift-display.config.example.json` to `src/config/shift-display.config.json` to normalise aliases and override the labels shown in the grid, legend, and PDF (for example, mapping "Nights" to `N`).
    - Update `src/config/shift-styling.config.json` to enable the conditional underline helper (ships empty by default). The example at `src/config/shift-styling.config.example.json` documents the weekday indexes. (Note that underline was changed to overline, for simplicity no other name was changed as it didn't affect features)
 
 5. Start the Next.js dev server:

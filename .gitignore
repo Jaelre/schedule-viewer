@@ -69,6 +69,7 @@ docs/private/
 src/config/doctor-names.json
 src/config/shift-colors.json
 src/config/shift-styling.config.json
+src/config/shift-display.config.json
 *.xlsx
 *.xls
 *.csv

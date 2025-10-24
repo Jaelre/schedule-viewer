@@ -1,5 +1,7 @@
 // lib/shift-format.ts - helpers for presenting shift codes consistently
 
+import { normalizeDisplayToken } from './shift-display-config'
+
 /**
  * Return the compact shift code used throughout the UI.
  *
@@ -30,5 +32,7 @@ export function getShiftDisplayCode(code: string): string {
 
   // Split on spaces to keep only the leading identifier chunk
   const leadingChunk = withoutParen.split(' ')[0]?.trim() ?? ''
-  return leadingChunk || withoutParen
+  const token = leadingChunk || withoutParen
+
+  return normalizeDisplayToken(token)
 }

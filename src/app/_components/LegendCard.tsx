@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { getShiftColor } from '@/lib/colors'
+import { resolveShiftLabel } from '@/lib/shift-labels'
 import type { ShiftCodeMap } from '@/lib/types'
 
 interface LegendCardProps {
@@ -14,8 +15,7 @@ export function LegendCard({ codes, shiftNames, codeMap }: LegendCardProps) {
   const legend = useMemo(() => {
     return codes.map((code) => {
       const colors = getShiftColor(code)
-      // Use shiftNames from API first, then fallback to codeMap, then just the code
-      const label = shiftNames?.[code] || codeMap?.[code]?.label || code
+      const label = resolveShiftLabel(code, shiftNames, codeMap)
 
       return {
         code,
