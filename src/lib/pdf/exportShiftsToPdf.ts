@@ -26,6 +26,11 @@ export async function exportShiftsToPdf(
         typeof window.matchMedia === 'function' ? window.matchMedia('print') : null
       let fallbackId: number | null = null
 
+      type MediaQueryListWithLegacy = MediaQueryList & {
+        addListener?: (listener: (this: MediaQueryList, ev: MediaQueryListEvent) => void) => void
+        removeListener?: (listener: (this: MediaQueryList, ev: MediaQueryListEvent) => void) => void
+      }
+
       const cleanup = () => {
         if (resolved) {
           return
@@ -37,8 +42,9 @@ export async function exportShiftsToPdf(
         if (mediaQueryList) {
           if ('removeEventListener' in mediaQueryList) {
             mediaQueryList.removeEventListener('change', handleMediaChange as EventListener)
-          } else if ('removeListener' in mediaQueryList) {
-            mediaQueryList.removeListener(handleMediaChange)
+          } else {
+            const legacyMediaQueryList = mediaQueryList as MediaQueryListWithLegacy
+            legacyMediaQueryList.removeListener?.(handleMediaChange)
           }
         }
 
@@ -64,8 +70,9 @@ export async function exportShiftsToPdf(
       if (mediaQueryList) {
         if ('addEventListener' in mediaQueryList) {
           mediaQueryList.addEventListener('change', handleMediaChange as EventListener)
-        } else if ('addListener' in mediaQueryList) {
-          mediaQueryList.addListener(handleMediaChange)
+        } else {
+          const legacyMediaQueryList = mediaQueryList as MediaQueryListWithLegacy
+          legacyMediaQueryList.addListener?.(handleMediaChange)
         }
       }
 
