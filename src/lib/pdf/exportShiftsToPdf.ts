@@ -1,6 +1,7 @@
 import type { MonthShifts } from '@/lib/types'
 import { getDaysInMonth } from '@/lib/date'
 import { getDoctorDisplayName } from '@/lib/doctor-names'
+import { getShiftDisplayCode } from '@/lib/shift-format'
 
 const PAGE_WIDTH = 841.89
 const PAGE_HEIGHT = 595.28
@@ -237,7 +238,11 @@ function formatShiftGrid(month: MonthShifts): PageLine[][] {
     for (let day = 0; day < daysInMonth; day += 1) {
       const codes = month.rows[personIndex]?.[day] ?? []
       if (codes && codes.length > 0) {
-        personRow.push(codes.join(', '))
+        const compactCodes = codes
+          .map(code => getShiftDisplayCode(code))
+          .filter(value => value.length > 0)
+
+        personRow.push(compactCodes.length > 0 ? compactCodes.join(', ') : '-')
       } else {
         personRow.push('-')
       }
