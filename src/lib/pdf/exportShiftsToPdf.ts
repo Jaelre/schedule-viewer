@@ -141,15 +141,7 @@ function buildPdfDocument(pages: PageLine[][]): string {
   return output
 }
 
-function truncateEnd(value: string, maxLength: number): string {
-  if (value.length <= maxLength) {
-    return value
-  }
-
-  return value.slice(0, maxLength)
-}
-
-function padEnd(value: string, width: number): string {
+function padCell(value: string, width: number): string {
   if (value.length >= width) {
     return value
   }
@@ -157,73 +149,36 @@ function padEnd(value: string, width: number): string {
   return `${value}${' '.repeat(width - value.length)}`
 }
 
-function padStart(value: string, width: number): string {
-  if (value.length >= width) {
-    return value
-  }
+function buildTableLines(header: string[], rows: string[][]): string[] {
+  const columnWidths = header.map((_, columnIndex) => {
+    const headerWidth = header[columnIndex]?.length ?? 0
+    const rowWidth = rows.reduce((max, row) => {
+      const cell = row[columnIndex] ?? ''
+      return Math.max(max, cell.length)
+    }, 0)
 
-  return `${' '.repeat(width - value.length)}${value}`
-}
-
-function formatShiftCell(codes: string[] | null, width: number): string {
-  if (!codes || codes.length === 0) {
-    return ''.padEnd(width, ' ')
-  }
-
-  const joined = codes.join('+')
-  return padStart(truncateEnd(joined, width), width)
-}
-
-function clampNameWidth(width: number): number {
-  return Math.max(16, Math.min(36, width))
-}
-
-function buildHeaderLine(daysInMonth: number, nameWidth: number, dayWidth: number): string {
-  const headerParts = [padEnd('Medico', nameWidth)]
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    headerParts.push(padStart(day.toString().padStart(2, '0'), dayWidth))
-  }
-
-  return headerParts.join(' ')
-}
-
-function buildRowLine(
-  displayName: string,
-  codes: (string[] | null)[],
-  daysInMonth: number,
-  nameWidth: number,
-  dayWidth: number
-): string {
-  const rowParts = [padEnd(truncateEnd(displayName, nameWidth), nameWidth)]
-
-  for (let day = 0; day < daysInMonth; day += 1) {
-    rowParts.push(formatShiftCell(codes[day] ?? null, dayWidth))
-  }
-
-  return rowParts.join(' ')
-}
-
-function buildLegendLines(month: MonthShifts, maxWidth: number): PageLine[] {
-  if (!month.codes || month.codes.length === 0) {
-    return []
-  }
-
-  const lines: PageLine[] = [{ text: '', fontSize: DEFAULT_FONT_SIZE }, { text: 'Legenda codici:', fontSize: DEFAULT_FONT_SIZE }]
-
-  month.codes.forEach(code => {
-    const friendly = month.shiftNames?.[code]
-    const entry = friendly ? `${code} – ${friendly}` : code
-    if (entry.length > maxWidth) {
-      lines.push({ text: truncateEnd(entry, maxWidth), fontSize: DEFAULT_FONT_SIZE })
-    } else {
-      lines.push({ text: entry, fontSize: DEFAULT_FONT_SIZE })
-    }
+    return Math.max(headerWidth, rowWidth)
   })
+
+  const separator = `+-${columnWidths.map(width => '-'.repeat(width)).join('-+-')}-+`
+  const formatRow = (row: string[]) =>
+    `| ${row
+      .map((cell, index) => padCell(cell ?? '', columnWidths[index] ?? 0))
+      .join(' | ')} |`
+
+  const lines: string[] = []
+  lines.push(separator)
+  lines.push(formatRow(header))
+  lines.push(separator)
+  rows.forEach(row => {
+    lines.push(formatRow(row))
+  })
+  lines.push(separator)
 
   return lines
 }
 
-function buildShiftPages(month: MonthShifts): PageLine[][] {
+function formatShiftGrid(month: MonthShifts): string[] {
   const daysInMonth = getDaysInMonth(month.ym)
   const title = `Turni ${formatMonthLabel(month.ym)}`
   const timestamp = new Intl.DateTimeFormat('it-IT', {
@@ -231,71 +186,42 @@ function buildShiftPages(month: MonthShifts): PageLine[][] {
     timeStyle: 'short',
   }).format(new Date())
 
-  const peopleWithDisplay = month.people
-    .map((person, index) => {
-      const displayName = getDoctorDisplayName(person.id, person.name).display
-      return {
-        index,
-        displayName,
+  const header = ['Medico']
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    header.push(`${day}`)
+  }
+
+  const rows: string[][] = month.people.map((person, personIndex) => {
+    const personRow: string[] = [person.name]
+
+    for (let day = 0; day < daysInMonth; day += 1) {
+      const codes = month.rows[personIndex]?.[day] ?? []
+      if (codes && codes.length > 0) {
+        const label = codes
+          .map(code => {
+            const friendly = month.shiftNames?.[code]
+            return friendly ? `${code} (${friendly})` : code
+          })
+          .join(', ')
+        personRow.push(label)
+      } else {
+        personRow.push('-')
       }
-    })
-    .filter(person => !person.displayName.startsWith('zzz_'))
-
-  const nameWidth = clampNameWidth(
-    peopleWithDisplay.reduce((max, person) => Math.max(max, person.displayName.length), 'Medico'.length)
-  )
-  const dayWidth = 4
-  const headerLine = buildHeaderLine(daysInMonth, nameWidth, dayWidth)
-  const separatorLine = '-'.repeat(headerLine.length)
-  const legendLines = buildLegendLines(
-    month,
-    Math.floor((PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN) / (DEFAULT_FONT_SIZE * 0.6))
-  )
-
-  const rowLines: PageLine[] = peopleWithDisplay.map(person => {
-    const codes = month.rows[person.index] ?? []
-    return {
-      text: buildRowLine(person.displayName, codes, daysInMonth, nameWidth, dayWidth),
-      fontSize: DEFAULT_FONT_SIZE,
     }
+
+    return personRow
   })
 
-  const availableHeight = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
-  const maxLinesPerPage = Math.max(1, Math.floor(availableHeight / LINE_HEIGHT))
+  const gridLines = buildTableLines(header, rows)
+  const lines: string[] = [title, `Esportato il ${timestamp}`, '', ...gridLines]
 
-  const firstPageHeader: PageLine[] = [
-    { text: title, fontSize: 14 },
-    { text: `Esportato il ${timestamp}`, fontSize: 10 },
-    { text: '', fontSize: DEFAULT_FONT_SIZE },
-    { text: headerLine, fontSize: DEFAULT_FONT_SIZE },
-    { text: separatorLine, fontSize: DEFAULT_FONT_SIZE },
-  ]
-
-  const continuationHeader: PageLine[] = [
-    { text: `${title} (continua)`, fontSize: 14 },
-    { text: '', fontSize: DEFAULT_FONT_SIZE },
-    { text: headerLine, fontSize: DEFAULT_FONT_SIZE },
-    { text: separatorLine, fontSize: DEFAULT_FONT_SIZE },
-  ]
-
-  const pages: PageLine[][] = []
-  const firstPageCapacity = Math.max(0, maxLinesPerPage - firstPageHeader.length)
-  const firstPageRows = rowLines.slice(0, firstPageCapacity)
-  pages.push([...firstPageHeader, ...firstPageRows])
-
-  let consumed = firstPageRows.length
-  while (consumed < rowLines.length) {
-    const remaining = rowLines.slice(consumed)
-    const capacity = Math.max(0, maxLinesPerPage - continuationHeader.length)
-
-    if (capacity === 0) {
-      pages.push([...continuationHeader])
-      break
-    }
-
-    const pageRows = remaining.slice(0, capacity)
-    pages.push([...continuationHeader, ...pageRows])
-    consumed += pageRows.length
+  if (month.codes && month.codes.length > 0) {
+    lines.push('')
+    lines.push('Legenda codici:')
+    month.codes.forEach(code => {
+      const friendly = month.shiftNames?.[code]
+      lines.push(`  ${code}${friendly ? ` – ${friendly}` : ''}`)
+    })
   }
 
   if (pages.length === 0) {
@@ -341,7 +267,14 @@ export async function exportShiftsToPdf(month: MonthShifts): Promise<void> {
     throw new Error('L\'esportazione PDF è disponibile solo nel browser')
   }
 
-  const pages = buildShiftPages(month)
+  const allLines = formatShiftGrid(month)
+  const availableHeight = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
+  const maxLinesPerPage = Math.max(1, Math.floor(availableHeight / LINE_HEIGHT))
+  const pages: string[][] = []
+
+  for (let index = 0; index < allLines.length; index += maxLinesPerPage) {
+    pages.push(allLines.slice(index, index + maxLinesPerPage))
+  }
   const pdfContent = buildPdfDocument(pages)
 
   const blob = new Blob([pdfContent], { type: 'application/pdf' })
