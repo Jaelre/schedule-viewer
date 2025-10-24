@@ -9,6 +9,7 @@ Monthly schedule explorer for emergency department shifts. The UI is built with 
 - Configurable dictionary for shift labels via `NEXT_PUBLIC_SHIFT_CODE_DICT` and doctor name mapping via `src/lib/doctor-names.json`.
 - Cloudflare Worker proxies all data access, injects secrets, retries upstream failures and keeps a short-lived in-memory cache.
 - Client refreshes data every 10 minutes and surfaces clear loading/error states.
+- `/pdf` route genera una versione scaricabile in PDF direttamente dal browser grazie a `jspdf` e `jspdf-autotable`.
 - Schedule access is gated by a worker-managed password exchange: clients `POST /api/access`, stash the returned token in `localStorage` and send it as an `Authorization` header to `/api/check-access` before fetching schedules (see [docs/access-gate.md](docs/access-gate.md#worker-managed-client-token-flow)).
 
 ## Architecture at a Glance
@@ -79,6 +80,11 @@ schedule-viewer/
    ```
 
    The UI opens at http://localhost:3000. If `NEXT_PUBLIC_API_URL` is unset it falls back to `/api`, so configure it to match the Worker endpoint when running against live data.
+
+## PDF Export
+
+- Naviga su http://localhost:3000/pdf per scegliere il mese e scaricare il riepilogo in PDF dei turni.
+- L&apos;esportazione utilizza le dipendenze npm [`jspdf`](https://www.npmjs.com/package/jspdf) e [`jspdf-autotable`](https://www.npmjs.com/package/jspdf-autotable), incluse nell&apos;installazione standard (`npm install`).
 
 ## Running the Cloudflare Worker Locally
 
