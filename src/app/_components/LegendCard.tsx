@@ -1,8 +1,8 @@
 'use client'
 
 import { useMemo } from 'react'
-import { getShiftColor } from '@/lib/colors'
 import type { ShiftCodeMap } from '@/lib/types'
+import { useRuntimeConfig } from '@/lib/config/runtime-config'
 
 interface LegendCardProps {
   codes: string[]
@@ -11,6 +11,7 @@ interface LegendCardProps {
 }
 
 export function LegendCard({ codes, shiftNames, codeMap }: LegendCardProps) {
+  const { getShiftColor } = useRuntimeConfig()
   const legend = useMemo(() => {
     return codes.map((code) => {
       const colors = getShiftColor(code)
@@ -23,7 +24,7 @@ export function LegendCard({ codes, shiftNames, codeMap }: LegendCardProps) {
         colors,
       }
     })
-  }, [codes, shiftNames, codeMap])
+  }, [codes, shiftNames, codeMap, getShiftColor])
 
   if (legend.length === 0) {
     return null

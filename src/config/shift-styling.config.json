@@ -1,8 +1,0 @@
-{
-  "comment": "Conditional shift styling configuration. Copy to shift-styling.config.json and customize.",
-  "conditionalUnderline": {
-    "shiftCode": "RATP",
-    "weekdays": [1, 3, 5],
-    "weekdaysComment": "0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday"
-  }
-}

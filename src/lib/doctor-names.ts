@@ -1,5 +1,3 @@
-import doctorNamesData from '@/config/doctor-names.json'
-
 export interface DoctorNamesDict {
   comment: string
   names: Record<string, string>
@@ -11,7 +9,10 @@ export interface DoctorDisplayName {
   display: string
 }
 
-const doctorNames: DoctorNamesDict = doctorNamesData
+export const DEFAULT_DOCTOR_NAMES: DoctorNamesDict = {
+  comment: 'Runtime fallback when no doctor-names.json is provided.',
+  names: {},
+}
 
 function extractPseudonym(apiName?: string): string | undefined {
   if (!apiName) {
@@ -80,24 +81,24 @@ function appendPseudonym(name: string, apiName?: string): string {
   return `${trimmedName} ${pseudonym}`
 }
 
-function resolveBaseName(id: string, apiName?: string): string {
-  if (doctorNames.names[id]) {
-    return doctorNames.names[id]
+function resolveBaseName(config: DoctorNamesDict, id: string, apiName?: string): string {
+  if (config.names[id]) {
+    return config.names[id]
   }
 
-  if (apiName && doctorNames.names[apiName]) {
-    return doctorNames.names[apiName]
+  if (apiName && config.names[apiName]) {
+    return config.names[apiName]
   }
 
   const trimmedApiName = apiName?.trim() ?? ''
   if (trimmedApiName) {
-    if (doctorNames.names[trimmedApiName]) {
-      return doctorNames.names[trimmedApiName]
+    if (config.names[trimmedApiName]) {
+      return config.names[trimmedApiName]
     }
 
     const searchTerm = trimmedApiName.toLowerCase()
 
-    for (const [key, fullName] of Object.entries(doctorNames.names)) {
+    for (const [key, fullName] of Object.entries(config.names)) {
       if (key.toLowerCase() === searchTerm) {
         return fullName
       }
@@ -106,7 +107,7 @@ function resolveBaseName(id: string, apiName?: string): string {
     const searchParts = searchTerm.split(/\s+/)
     const searchLastName = searchParts[searchParts.length - 1]
 
-    for (const fullName of Object.values(doctorNames.names)) {
+    for (const fullName of Object.values(config.names)) {
       const fullNameLower = fullName.toLowerCase()
       const nameParts = fullNameLower.split(/\s+/)
       const lastName = nameParts[nameParts.length - 1]
@@ -128,9 +129,13 @@ function resolveBaseName(id: string, apiName?: string): string {
  * @param apiName - Optional name from the API to use for matching
  * @returns The doctor's formatted name parts
  */
-export function getDoctorDisplayName(id: string | number, apiName?: string): DoctorDisplayName {
+export function getDoctorDisplayName(
+  config: DoctorNamesDict,
+  id: string | number,
+  apiName?: string
+): DoctorDisplayName {
   const idStr = String(id)
-  const rawBaseName = resolveBaseName(idStr, apiName)
+  const rawBaseName = resolveBaseName(config, idStr, apiName)
   const baseName = rawBaseName.trim()
   const display = appendPseudonym(rawBaseName, apiName)
   const pseudonym = extractPseudonym(apiName)
@@ -173,21 +178,25 @@ export function getDoctorDisplayName(id: string | number, apiName?: string): Doc
  * @param apiName - Optional name from the API to use for matching
  * @returns The doctor's real name, or the original ID/name if not found
  */
-export function getDoctorName(id: string | number, apiName?: string): string {
-  return getDoctorDisplayName(id, apiName).display
+export function getDoctorName(
+  config: DoctorNamesDict,
+  id: string | number,
+  apiName?: string
+): string {
+  return getDoctorDisplayName(config, id, apiName).display
 }
 
 /**
  * Get the entire doctor names dictionary
  */
-export function getAllDoctorNames(): Record<string, string> {
-  return doctorNames.names
+export function getAllDoctorNames(config: DoctorNamesDict): Record<string, string> {
+  return config.names
 }
 
 /**
  * Check if a doctor ID exists in the dictionary
  */
-export function hasDoctorName(id: string | number): boolean {
+export function hasDoctorName(config: DoctorNamesDict, id: string | number): boolean {
   const idStr = String(id)
-  return idStr in doctorNames.names
+  return idStr in config.names
 }

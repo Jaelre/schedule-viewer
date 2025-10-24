@@ -9,6 +9,7 @@ import { ShiftDayGrid } from './ShiftDayGrid'
 import { preparePeopleWithNames, calculateNameColumnWidth } from './utils'
 import { densityConfig, defaultNameColumnWidths, ROW_VIRTUALIZATION_THRESHOLD } from './types'
 import type { Density, ViewMode } from './types'
+import { useRuntimeConfig } from '@/lib/config/runtime-config'
 
 interface ScheduleGridProps {
   data: MonthShifts
@@ -26,8 +27,13 @@ export function ScheduleGrid({ data, density, codes, codeMap, viewMode }: Schedu
     `${defaultNameColumnWidths[density]}px`
   )
 
+  const { getDoctorDisplayName } = useRuntimeConfig()
+
   // Prepare people data
-  const peopleWithNames = useMemo(() => preparePeopleWithNames(people), [people])
+  const peopleWithNames = useMemo(
+    () => preparePeopleWithNames(people, getDoctorDisplayName),
+    [people, getDoctorDisplayName]
+  )
 
   // Decide rendering strategy
   const shouldVirtualize =

@@ -1,19 +1,17 @@
 // lib/colors.ts - Deterministic color mapping for shift codes
 // Colors must be accessible (WCAG AA contrast ratio)
 
-import shiftColorsData from '@/config/shift-colors.json'
-
-interface ShiftColorConfig {
+export interface ShiftColorConfig {
   background: string
   text: string
   description?: string
 }
 
-interface ShiftColorsData {
+export interface ShiftColorsData {
   comment: string
   colors: Record<string, ShiftColorConfig>
   fallback: {
-    comment: string
+    comment?: string
     saturation_min: number
     saturation_range: number
     lightness_min: number
@@ -22,7 +20,19 @@ interface ShiftColorsData {
   }
 }
 
-const shiftColors: ShiftColorsData = shiftColorsData
+export const DEFAULT_SHIFT_COLORS: ShiftColorsData = {
+  comment: 'Default colour palette used when shift-colors.json is missing.',
+  colors: {},
+  fallback: {
+    comment:
+      'Auto-generate colours for codes not listed above using deterministic HSL values.',
+    saturation_min: 40,
+    saturation_range: 30,
+    lightness_min: 75,
+    lightness_range: 15,
+    text_lightness_offset: 65,
+  },
+}
 
 /**
  * Hash a string to a number (for deterministic color generation)
@@ -38,21 +48,30 @@ function hashCode(str: string): number {
 }
 
 /**
- * Generate a deterministic color for a shift code
- * Returns { background, text } with accessible contrast
+ * Generate a deterministic color for a shift code based on runtime configuration.
+ * Returns { background, text } with accessible contrast.
  */
-export function getShiftColor(code: string): { background: string; text: string } {
+export function getShiftColorFromConfig(
+  config: ShiftColorsData,
+  code: string
+): { background: string; text: string } {
   // Check if there's a predefined color in the JSON config
-  if (shiftColors.colors[code]) {
+  if (config.colors[code]) {
     return {
-      background: shiftColors.colors[code].background,
-      text: shiftColors.colors[code].text,
+      background: config.colors[code].background,
+      text: config.colors[code].text,
     }
   }
 
   // Generate color from hash using fallback configuration
   const hash = hashCode(code)
-  const { saturation_min, saturation_range, lightness_min, lightness_range, text_lightness_offset } = shiftColors.fallback
+  const {
+    saturation_min,
+    saturation_range,
+    lightness_min,
+    lightness_range,
+    text_lightness_offset,
+  } = config.fallback
 
   // Use hash to generate a hue (0-360)
   const hue = hash % 360
