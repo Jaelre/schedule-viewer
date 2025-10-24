@@ -178,7 +178,7 @@ function buildTableLines(header: string[], rows: string[][]): string[] {
   return lines
 }
 
-function formatShiftGrid(month: MonthShifts): string[] {
+function formatShiftGrid(month: MonthShifts): PageLine[][] {
   const daysInMonth = getDaysInMonth(month.ym)
   const title = `Turni ${formatMonthLabel(month.ym)}`
   const timestamp = new Intl.DateTimeFormat('it-IT', {
@@ -192,7 +192,8 @@ function formatShiftGrid(month: MonthShifts): string[] {
   }
 
   const rows: string[][] = month.people.map((person, personIndex) => {
-    const personRow: string[] = [person.name]
+    const displayName = getDoctorDisplayName(person.id, person.name).display
+    const personRow: string[] = [displayName]
 
     for (let day = 0; day < daysInMonth; day += 1) {
       const codes = month.rows[personIndex]?.[day] ?? []
@@ -213,48 +214,49 @@ function formatShiftGrid(month: MonthShifts): string[] {
   })
 
   const gridLines = buildTableLines(header, rows)
-  const lines: string[] = [title, `Esportato il ${timestamp}`, '', ...gridLines]
+  const tableLines: PageLine[] = gridLines.map(text => ({ text }))
 
+  const headerTemplate: PageLine[] = [
+    { text: title, fontSize: 10 },
+    { text: `Esportato il ${timestamp}` },
+    { text: '' },
+  ]
+  const availableHeight = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
+  const baseMaxLines = Math.max(1, Math.floor(availableHeight / LINE_HEIGHT))
+  const maxLinesPerPage = Math.max(baseMaxLines, headerTemplate.length + 1)
+
+  const legendLines: PageLine[] = []
   if (month.codes && month.codes.length > 0) {
-    lines.push('')
-    lines.push('Legenda codici:')
+    legendLines.push({ text: '' })
+    legendLines.push({ text: 'Legenda codici:' })
     month.codes.forEach(code => {
       const friendly = month.shiftNames?.[code]
-      lines.push(`  ${code}${friendly ? ` – ${friendly}` : ''}`)
+      legendLines.push({ text: `  ${code}${friendly ? ` – ${friendly}` : ''}` })
     })
   }
 
-  if (pages.length === 0) {
-    pages.push([...firstPageHeader])
-  }
+  const cloneHeader = (): PageLine[] => headerTemplate.map(line => ({ ...line }))
+  const pages: PageLine[][] = []
+  let currentPage: PageLine[] = cloneHeader()
 
-  if (legendLines.length > 0) {
-    let remainingLegend = [...legendLines]
-    let currentPageIndex = pages.length - 1
-
-    while (remainingLegend.length > 0) {
-      const currentPage = pages[currentPageIndex]
-      const remainingCapacity = maxLinesPerPage - currentPage.length
-
-      if (remainingCapacity > 0) {
-        const toAdd = remainingLegend.slice(0, remainingCapacity)
-        currentPage.push(...toAdd)
-        remainingLegend = remainingLegend.slice(toAdd.length)
-      } else {
-        const capacity = Math.max(0, maxLinesPerPage - continuationHeader.length)
-        const newPage = [...continuationHeader]
-        const toAdd = capacity > 0 ? remainingLegend.slice(0, capacity) : []
-        newPage.push(...toAdd)
-        pages.push(newPage)
-        remainingLegend = remainingLegend.slice(toAdd.length)
-        currentPageIndex = pages.length - 1
-        if (capacity === 0 && remainingLegend.length > 0) {
-          // Prevent infinite loop by discarding extra legend lines if there's no space
-          break
-        }
-      }
+  const pushCurrentPage = () => {
+    if (currentPage.length > 0) {
+      pages.push(currentPage)
     }
   }
+
+  const appendLine = (line: PageLine) => {
+    if (currentPage.length >= maxLinesPerPage) {
+      pushCurrentPage()
+      currentPage = cloneHeader()
+    }
+    currentPage.push(line)
+  }
+
+  tableLines.forEach(appendLine)
+  legendLines.forEach(appendLine)
+
+  pushCurrentPage()
 
   return pages
 }
@@ -267,14 +269,7 @@ export async function exportShiftsToPdf(month: MonthShifts): Promise<void> {
     throw new Error('L\'esportazione PDF è disponibile solo nel browser')
   }
 
-  const allLines = formatShiftGrid(month)
-  const availableHeight = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
-  const maxLinesPerPage = Math.max(1, Math.floor(availableHeight / LINE_HEIGHT))
-  const pages: string[][] = []
-
-  for (let index = 0; index < allLines.length; index += maxLinesPerPage) {
-    pages.push(allLines.slice(index, index + maxLinesPerPage))
-  }
+  const pages = formatShiftGrid(month)
   const pdfContent = buildPdfDocument(pages)
 
   const blob = new Blob([pdfContent], { type: 'application/pdf' })
