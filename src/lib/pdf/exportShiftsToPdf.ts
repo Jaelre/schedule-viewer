@@ -10,6 +10,8 @@ const LEFT_MARGIN = 40
 const RIGHT_MARGIN = 40
 const LINE_HEIGHT = 12
 const DEFAULT_FONT_SIZE = 7
+const MAX_NAME_COLUMN_WIDTH = 26
+const MAX_DAY_COLUMN_WIDTH = 10
 
 type PageLine = {
   text: string
@@ -141,39 +143,76 @@ function buildPdfDocument(pages: PageLine[][]): string {
   return output
 }
 
-function padCell(value: string, width: number): string {
-  if (value.length >= width) {
+function truncateCell(value: string, width: number): string {
+  if (value.length <= width) {
     return value
   }
 
-  return `${value}${' '.repeat(width - value.length)}`
+  if (width <= 1) {
+    return value.slice(0, width)
+  }
+
+  return `${value.slice(0, width - 1)}…`
 }
 
-function buildTableLines(header: string[], rows: string[][]): string[] {
-  const columnWidths = header.map((_, columnIndex) => {
-    const headerWidth = header[columnIndex]?.length ?? 0
+function formatCell(value: string, width: number): string {
+  if (width <= 0) {
+    return ''
+  }
+
+  const truncated = truncateCell(value, width)
+  if (truncated.length >= width) {
+    return truncated
+  }
+
+  return `${truncated}${' '.repeat(width - truncated.length)}`
+}
+
+function getColumnWidthLimit(columnIndex: number): number {
+  return columnIndex === 0 ? MAX_NAME_COLUMN_WIDTH : MAX_DAY_COLUMN_WIDTH
+}
+
+function calculateColumnWidths(header: string[], rows: string[][]): number[] {
+  return header.map((_, columnIndex) => {
+    const limit = getColumnWidthLimit(columnIndex)
+
+    const headerWidth = Math.min(header[columnIndex]?.length ?? 0, limit)
     const rowWidth = rows.reduce((max, row) => {
       const cell = row[columnIndex] ?? ''
-      return Math.max(max, cell.length)
+      const measured = Math.min(cell.length, limit)
+      return Math.max(max, measured)
     }, 0)
 
-    return Math.max(headerWidth, rowWidth)
-  })
+    const resolved = Math.max(headerWidth, rowWidth)
+    if (columnIndex === 0) {
+      return Math.max(resolved, Math.min(limit, 8))
+    }
 
-  const separator = `+-${columnWidths.map(width => '-'.repeat(width)).join('-+-')}-+`
+    return Math.max(resolved, Math.min(limit, 3))
+  })
+}
+
+function buildTableLines(
+  header: string[],
+  rows: string[][],
+  columnWidths: number[],
+): string[] {
   const formatRow = (row: string[]) =>
     `| ${row
-      .map((cell, index) => padCell(cell ?? '', columnWidths[index] ?? 0))
+      .map((cell, index) => formatCell(cell ?? '', columnWidths[index] ?? 0))
       .join(' | ')} |`
+
+  const separator = `+-${columnWidths.map(width => '-'.repeat(width)).join('-+-')}-+`
 
   const lines: string[] = []
   lines.push(separator)
   lines.push(formatRow(header))
   lines.push(separator)
+
   rows.forEach(row => {
     lines.push(formatRow(row))
+    lines.push(separator)
   })
-  lines.push(separator)
 
   return lines
 }
@@ -198,13 +237,7 @@ function formatShiftGrid(month: MonthShifts): PageLine[][] {
     for (let day = 0; day < daysInMonth; day += 1) {
       const codes = month.rows[personIndex]?.[day] ?? []
       if (codes && codes.length > 0) {
-        const label = codes
-          .map(code => {
-            const friendly = month.shiftNames?.[code]
-            return friendly ? `${code} (${friendly})` : code
-          })
-          .join(', ')
-        personRow.push(label)
+        personRow.push(codes.join(', '))
       } else {
         personRow.push('-')
       }
@@ -213,8 +246,7 @@ function formatShiftGrid(month: MonthShifts): PageLine[][] {
     return personRow
   })
 
-  const gridLines = buildTableLines(header, rows)
-  const tableLines: PageLine[] = gridLines.map(text => ({ text }))
+  const columnWidths = calculateColumnWidths(header, rows)
 
   const headerTemplate: PageLine[] = [
     { text: title, fontSize: 10 },
@@ -223,7 +255,7 @@ function formatShiftGrid(month: MonthShifts): PageLine[][] {
   ]
   const availableHeight = PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN
   const baseMaxLines = Math.max(1, Math.floor(availableHeight / LINE_HEIGHT))
-  const maxLinesPerPage = Math.max(baseMaxLines, headerTemplate.length + 1)
+  let maxLinesPerPage = Math.max(baseMaxLines, headerTemplate.length + 1)
 
   const legendLines: PageLine[] = []
   if (month.codes && month.codes.length > 0) {
@@ -237,26 +269,89 @@ function formatShiftGrid(month: MonthShifts): PageLine[][] {
 
   const cloneHeader = (): PageLine[] => headerTemplate.map(line => ({ ...line }))
   const pages: PageLine[][] = []
-  let currentPage: PageLine[] = cloneHeader()
 
-  const pushCurrentPage = () => {
-    if (currentPage.length > 0) {
-      pages.push(currentPage)
-    }
+  const headerLineCount = buildTableLines(header, [], columnWidths).length
+  const rowLineCost = 2
+
+  const minLinesForContent = headerTemplate.length + headerLineCount + rowLineCost
+  if (maxLinesPerPage < minLinesForContent) {
+    maxLinesPerPage = minLinesForContent
   }
 
-  const appendLine = (line: PageLine) => {
-    if (currentPage.length >= maxLinesPerPage) {
-      pushCurrentPage()
-      currentPage = cloneHeader()
+  const buildTableForRows = (rowsSlice: string[][]): PageLine[] =>
+    buildTableLines(header, rowsSlice, columnWidths).map(text => ({ text }))
+
+  const pushPage = (rowsSlice: string[][], legendStartIndex: number): number => {
+    const page = cloneHeader()
+    let usedLines = headerTemplate.length
+
+    if (rowsSlice.length > 0) {
+      const tableLines = buildTableForRows(rowsSlice)
+      tableLines.forEach(line => page.push(line))
+      usedLines += tableLines.length
+    } else {
+      page.push({ text: '' })
+      usedLines += 1
     }
-    currentPage.push(line)
+
+    let nextLegendIndex = legendStartIndex
+    while (nextLegendIndex < legendLines.length && usedLines < maxLinesPerPage) {
+      page.push({ ...legendLines[nextLegendIndex] })
+      usedLines += 1
+      nextLegendIndex += 1
+    }
+
+    pages.push(page)
+    return nextLegendIndex
   }
 
-  tableLines.forEach(appendLine)
-  legendLines.forEach(appendLine)
+  const pagesWithoutLegend: string[][][] = []
+  let currentRows: string[][] = []
+  let currentLineCount = headerLineCount
 
-  pushCurrentPage()
+  const maxContentLines = maxLinesPerPage - headerTemplate.length
+
+  rows.forEach(row => {
+    if (currentLineCount + rowLineCost > maxContentLines && currentRows.length > 0) {
+      pagesWithoutLegend.push(currentRows)
+      currentRows = []
+      currentLineCount = headerLineCount
+    }
+
+    if (rowLineCost > maxContentLines - headerLineCount && currentRows.length === 0) {
+      // Fallback: ensure progress even if a single row would overflow
+      pagesWithoutLegend.push([row])
+      currentLineCount = headerLineCount
+      currentRows = []
+      return
+    }
+
+    currentRows.push(row)
+    currentLineCount += rowLineCost
+  })
+
+  if (currentRows.length > 0) {
+    pagesWithoutLegend.push(currentRows)
+  }
+
+  if (pagesWithoutLegend.length === 0) {
+    pagesWithoutLegend.push([])
+  }
+
+  const legendLineCount = legendLines.length
+  let legendIndex = 0
+  pagesWithoutLegend.forEach((rowsSlice, index) => {
+    const isLastPage = index === pagesWithoutLegend.length - 1
+    if (legendLineCount > 0 && isLastPage) {
+      legendIndex = pushPage(rowsSlice, legendIndex)
+    } else {
+      pushPage(rowsSlice, legendLineCount)
+    }
+  })
+
+  while (legendIndex < legendLineCount) {
+    legendIndex = pushPage([], legendIndex)
+  }
 
   return pages
 }
