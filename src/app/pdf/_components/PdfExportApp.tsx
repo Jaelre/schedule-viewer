@@ -9,6 +9,7 @@ import { useMonthShifts } from '@/lib/api-client'
 import { shiftCodeMap } from '@/lib/shift-code-map'
 import { exportShiftsToPdf } from '@/lib/pdf/exportShiftsToPdf'
 import { PrintableSchedule } from './PrintableSchedule'
+import { useTelemetry } from '@/app/providers'
 
 export function PdfExportApp() {
   const searchParams = useSearchParams()
@@ -21,18 +22,22 @@ export function PdfExportApp() {
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const printableRef = useRef<HTMLDivElement>(null)
+  const { track } = useTelemetry()
 
   const monthLabel = useMemo(() => formatMonthDisplay(currentYM), [currentYM])
 
   const handleExport = useCallback(async () => {
     if (!data) {
+      track({ feature: 'pdf_export', action: 'export', value: 'missing_data' })
       return
     }
 
     setExportError(null)
     setIsExporting(true)
+    track({ feature: 'pdf_export', action: 'export', value: 'start' })
     try {
       await exportShiftsToPdf(data, printableRef.current)
+      track({ feature: 'pdf_export', action: 'export', value: 'success' })
     } catch (err) {
       console.error('Failed to export PDF', err)
       setExportError(
@@ -40,10 +45,22 @@ export function PdfExportApp() {
           ? err.message
           : 'Impossibile generare il PDF, riprova più tardi.',
       )
+      track({ feature: 'pdf_export', action: 'export', value: 'error' })
     } finally {
       setIsExporting(false)
     }
-  }, [data])
+  }, [data, track])
+
+  const handleRetry = useCallback(() => {
+    track({ feature: 'pdf_export', action: 'retry_fetch', value: currentYM })
+    refetch()
+  }, [currentYM, refetch, track])
+
+  const handleLegendOpen = useCallback(() => {
+    if (isLegendOpen) return
+    setIsLegendOpen(true)
+    track({ feature: 'pdf_export', action: 'open_legend', value: currentYM })
+  }, [currentYM, isLegendOpen, track])
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,7 +70,7 @@ export function PdfExportApp() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setIsLegendOpen(true)}
+              onClick={handleLegendOpen}
               className="px-3 py-1.5 text-sm font-medium rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-secondary/90 transition-colors"
               disabled={!data}
             >
@@ -110,7 +127,7 @@ export function PdfExportApp() {
             </p>
             <button
               type="button"
-              onClick={() => refetch()}
+              onClick={handleRetry}
               className="mt-4 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Riprova

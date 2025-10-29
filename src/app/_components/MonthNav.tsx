@@ -1,8 +1,9 @@
 'use client'
 
-import { ChangeEvent } from 'react'
+import { ChangeEvent, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getPreviousYM, getNextYM, formatMonthDisplay } from '@/lib/date'
+import { useTelemetry } from '@/app/providers'
 
 interface MonthNavProps {
   currentYM: string
@@ -12,28 +13,36 @@ interface MonthNavProps {
 export function MonthNav({ currentYM, basePath = '/' }: MonthNavProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { track } = useTelemetry()
 
-  const navigateToMonth = (ym: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('ym', ym)
-    const path = basePath.endsWith('/') && basePath !== '/' ? basePath.slice(0, -1) : basePath
-    router.push(`${path}?${params.toString()}`)
-  }
+  const navigateToMonth = useCallback(
+    (ym: string) => {
+      track({ feature: 'month_nav', action: 'change_month', value: ym })
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('ym', ym)
+      const path = basePath.endsWith('/') && basePath !== '/' ? basePath.slice(0, -1) : basePath
+      router.push(`${path}?${params.toString()}`)
+    },
+    [basePath, router, searchParams, track]
+  )
 
-  const handlePrevious = () => {
+  const handlePrevious = useCallback(() => {
     navigateToMonth(getPreviousYM(currentYM))
-  }
+  }, [currentYM, navigateToMonth])
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     navigateToMonth(getNextYM(currentYM))
-  }
+  }, [currentYM, navigateToMonth])
 
-  const handleMonthChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value
-    if (value) {
-      navigateToMonth(value)
-    }
-  }
+  const handleMonthChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value
+      if (value) {
+        navigateToMonth(value)
+      }
+    },
+    [navigateToMonth]
+  )
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
