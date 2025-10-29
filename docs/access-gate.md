@@ -46,6 +46,20 @@ Variables).
 2. Invalidate existing tokens by changing the password and redeploying. Users will
    be forced to re-authenticate the next time the token is checked.
 
+## Telemetry and token reuse
+
+Telemetry uploads reuse the same bearer token issued by `/api/access`. The
+browser attaches `Authorization: Bearer <token>` to calls against
+`/api/telemetry`, so rotating `ACCESS_PASSWORD` automatically invalidates both
+schedule reads and telemetry writes. Administrators can monitor or revoke access
+by:
+
+- Rotating `ACCESS_PASSWORD`, which forces the client helper to request a new
+  token before sending additional events.
+- Watching Worker logs (`wrangler tail`) for anomalous telemetry volume tied to a
+  specific token.
+- Auditing persisted batches as described in [docs/telemetry.md](telemetry.md).
+
 ## Troubleshooting
 
 | Symptom | Resolution |
