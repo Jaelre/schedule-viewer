@@ -145,6 +145,13 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
   - `API_TOKEN`: MetricAid API authentication
   - `ACCESS_PASSWORD`: Password gate authentication (set via `wrangler secret put ACCESS_PASSWORD`)
 
+## Telemetry
+
+- **Client helper**: A lightweight telemetry client queues structured events in memory and sends them to the Worker endpoint exposed via `NEXT_PUBLIC_TELEMETRY_ENDPOINT`. It wraps `navigator.sendBeacon` when available, falling back to authenticated `fetch` requests when the page is in the foreground.
+- **Batching**: Events are appended to an in-memory queue and flushed when either 20 events accumulate or 5 seconds elapse. Visibility changes (`visibilitychange`, `beforeunload`) trigger an immediate flush so that navigation away from the page does not drop data.
+- **Authentication**: Telemetry requests reuse the access-token issued by `/api/access`, attaching it as an `Authorization: Bearer <token>` header. No additional secrets are stored in the browser, so rotating the password gate token immediately covers telemetry traffic as well.
+- **Environment**: Configure `NEXT_PUBLIC_TELEMETRY_ENDPOINT` (defaults to `/api/telemetry`) and optionally override `TELEMETRY_MAX_BATCH_SIZE` / `TELEMETRY_FLUSH_INTERVAL_MS` on the Worker to tune throughput. See [docs/telemetry.md](docs/telemetry.md) for event schemas and operational guidance.
+
 ## API Contract
 
 `GET /api/shifts?ym=YYYY-MM`
