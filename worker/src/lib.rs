@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use constant_time_eq::constant_time_eq;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::sync::RwLock;
 use worker::*;
@@ -26,6 +27,127 @@ struct CachedSchedule {
 
 static SCHEDULE_CACHE: Lazy<RwLock<HashMap<String, CachedSchedule>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
+
+type JsonMap = Map<String, Value>;
+
+#[derive(Deserialize, Default)]
+struct TelemetryBatch {
+    #[serde(default)]
+    events: Vec<TelemetryEvent>,
+    #[serde(default)]
+    flush: bool,
+    #[serde(default)]
+    stream: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct TelemetryEvent {
+    #[serde(flatten)]
+    fields: JsonMap,
+}
+
+#[derive(Serialize)]
+struct EnrichedTelemetryEvent {
+    #[serde(flatten)]
+    fields: JsonMap,
+    metadata: TelemetryMetadata,
+}
+
+#[derive(Serialize, Clone)]
+struct TelemetryMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user_agent: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ip_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    region: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stream: Option<String>,
+    received_at: String,
+}
+
+const TELEMETRY_BUFFER_MAX_EVENTS: usize = 50;
+const TELEMETRY_BUFFER_TTL_SECONDS: i64 = 30;
+
+static TELEMETRY_BUFFER: Lazy<RwLock<TelemetryBuffer>> =
+    Lazy::new(|| RwLock::new(TelemetryBuffer::default()));
+
+struct TelemetryBuffer {
+    events: Vec<EnrichedTelemetryEvent>,
+    last_flush: DateTime<Utc>,
+}
+
+impl TelemetryBuffer {
+    fn new() -> Self {
+        Self {
+            events: Vec::new(),
+            last_flush: Utc::now(),
+        }
+    }
+
+    fn ingest(
+        &mut self,
+        new_events: Vec<EnrichedTelemetryEvent>,
+        force_flush: bool,
+    ) -> TelemetryIngestStatus {
+        let has_new = !new_events.is_empty();
+        if has_new {
+            self.events.extend(new_events);
+        }
+
+        let now = Utc::now();
+        let ttl_elapsed = now.signed_duration_since(self.last_flush).num_seconds()
+            >= TELEMETRY_BUFFER_TTL_SECONDS;
+
+        let should_flush =
+            force_flush || self.events.len() >= TELEMETRY_BUFFER_MAX_EVENTS || ttl_elapsed;
+
+        if should_flush && !self.events.is_empty() {
+            self.flush(now);
+            TelemetryIngestStatus::Flushed
+        } else if has_new {
+            TelemetryIngestStatus::Buffered
+        } else {
+            TelemetryIngestStatus::Noop
+        }
+    }
+
+    fn flush(&mut self, timestamp: DateTime<Utc>) {
+        if self.events.is_empty() {
+            self.last_flush = timestamp;
+            return;
+        }
+
+        match serde_json::to_string(&self.events) {
+            Ok(payload) => {
+                console_log!(
+                    "Telemetry flush ({} events) at {}: {}",
+                    self.events.len(),
+                    timestamp.to_rfc3339(),
+                    payload
+                );
+            }
+            Err(error) => {
+                console_log!("Failed to serialise telemetry events: {:?}", error);
+            }
+        }
+
+        self.events.clear();
+        self.last_flush = timestamp;
+    }
+}
+
+impl Default for TelemetryBuffer {
+    fn default() -> Self {
+        TelemetryBuffer::new()
+    }
+}
+
+enum TelemetryIngestStatus {
+    Noop,
+    Buffered,
+    Flushed,
+}
 
 #[derive(Deserialize, Default)]
 struct RawShiftDisplayConfig {
@@ -228,8 +350,15 @@ struct UserDetails {
 }
 
 fn log_request(req: &Request) {
-    let cf_coords = req.cf().map(|cf| cf.coordinates()).flatten().unwrap_or_default();
-    let cf_region = req.cf().and_then(|cf| cf.region()).unwrap_or_else(|| "unknown region".into());
+    let cf_coords = req
+        .cf()
+        .map(|cf| cf.coordinates())
+        .flatten()
+        .unwrap_or_default();
+    let cf_region = req
+        .cf()
+        .and_then(|cf| cf.region())
+        .unwrap_or_else(|| "unknown region".into());
     console_log!(
         "{} - [{}], located at: {:?}, within: {}",
         Date::now().to_string(),
@@ -262,6 +391,9 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .get_async("/api/shifts", |req, ctx| async move {
             handle_shifts(req, ctx).await
+        })
+        .post_async("/api/telemetry", |req, ctx| async move {
+            handle_telemetry(req, ctx).await
         })
         .run(req, env)
         .await
@@ -304,13 +436,7 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     );
 
     // Fetch from upstream API with timeout and retry
-    let upstream_data = match fetch_with_retry(
-        &upstream_url,
-        config.api_timeout_ms,
-        2,
-        None,
-    )
-    .await
+    let upstream_data = match fetch_with_retry(&upstream_url, config.api_timeout_ms, 2, None).await
     {
         Ok(data) => data,
         Err(e) => {
@@ -342,6 +468,83 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     store_schedule_in_cache(&ym, json.clone());
 
     build_success_response(json, cache_ttl_seconds, "MISS")
+}
+
+async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let origin = req
+        .headers()
+        .get("Origin")?
+        .unwrap_or_else(|| "*".to_string());
+
+    if !has_access_token(&req, &ctx) {
+        return error_response_with_origin(
+            "UNAUTHORIZED",
+            "Missing or invalid access token",
+            401,
+            &origin,
+        );
+    }
+
+    let user_agent = req
+        .headers()
+        .get("User-Agent")?
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    let ip_address = req
+        .headers()
+        .get("CF-Connecting-IP")?
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    let region = req
+        .cf()
+        .and_then(|cf| cf.region())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    let batch: TelemetryBatch = match req.json().await {
+        Ok(body) => body,
+        Err(error) => {
+            console_log!("Failed to parse telemetry batch: {:?}", error);
+            return error_response_with_origin("INVALID_REQUEST", "Invalid JSON", 400, &origin);
+        }
+    };
+
+    let TelemetryBatch {
+        events,
+        flush,
+        stream,
+    } = batch;
+
+    let enriched_events: Vec<EnrichedTelemetryEvent> = events
+        .into_iter()
+        .map(|event| EnrichedTelemetryEvent {
+            fields: event.fields,
+            metadata: TelemetryMetadata {
+                user_agent: user_agent.clone(),
+                ip_address: ip_address.clone(),
+                region: region.clone(),
+                stream: stream.clone(),
+                received_at: Utc::now().to_rfc3339(),
+            },
+        })
+        .collect();
+
+    let ingest_status = {
+        let mut buffer = TELEMETRY_BUFFER.write().expect("telemetry buffer poisoned");
+        buffer.ingest(enriched_events, flush)
+    };
+
+    let status_code = match ingest_status {
+        TelemetryIngestStatus::Noop => 204,
+        TelemetryIngestStatus::Buffered | TelemetryIngestStatus::Flushed => 202,
+    };
+
+    let headers = build_cors_headers(&origin)?;
+    Ok(Response::empty()?
+        .with_headers(headers)
+        .with_status(status_code))
 }
 
 fn get_cached_schedule(ym: &str, ttl_seconds: u64) -> Option<String> {
@@ -506,7 +709,9 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
         let fname = shift.user.fname.as_deref().unwrap_or("Unknown");
         let lname = shift.user.lname.as_deref().unwrap_or("");
 
-        let user_id = shift.user.id
+        let user_id = shift
+            .user
+            .id
             .map(|id| id.to_string())
             .unwrap_or_else(|| format!("{}_{}", fname, lname));
         people_map.entry(user_id.clone()).or_insert_with(|| Person {
@@ -545,7 +750,9 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
         let fname = shift.user.fname.as_deref().unwrap_or("Unknown");
         let lname = shift.user.lname.as_deref().unwrap_or("");
 
-        let user_id = shift.user.id
+        let user_id = shift
+            .user
+            .id
             .map(|id| id.to_string())
             .unwrap_or_else(|| format!("{}_{}", fname, lname));
         if let Some(&person_idx) = person_indices.get(&user_id) {
@@ -611,11 +818,7 @@ fn extract_shift_code(alias: &str) -> String {
     // Extract shift code from alias like "RATM 8:00AM - 2:00PM" -> "RATM"
     // or "FT 8:30am - 6:30" -> "FT"
     // Just take everything before the first space or digit and normalise using config
-    let token = alias
-        .split_whitespace()
-        .next()
-        .unwrap_or(alias)
-        .trim();
+    let token = alias.split_whitespace().next().unwrap_or(alias).trim();
 
     let normalised = SHIFT_DISPLAY_CONFIG.normalize_token(token);
     if normalised.is_empty() {
@@ -688,7 +891,12 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
     let expected_password = match ctx.secret("ACCESS_PASSWORD") {
         Ok(secret) => secret.to_string(),
         Err(_) => {
-            return error_response_with_origin("CONFIG_ERROR", "Password not configured", 500, &origin);
+            return error_response_with_origin(
+                "CONFIG_ERROR",
+                "Password not configured",
+                500,
+                &origin,
+            );
         }
     };
 
@@ -732,28 +940,40 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
 }
 
 fn handle_options_with_origin(req: &Request) -> Result<Response> {
-    let mut headers = Headers::new();
-
     // Get origin from request, default to * if not present
     let origin = req
         .headers()
         .get("Origin")?
         .unwrap_or_else(|| "*".to_string());
 
-    headers.set("Access-Control-Allow-Origin", &origin)?;
-    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")?;
-    headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")?;
-    headers.set("Access-Control-Allow-Credentials", "true")?;
-    headers.set("Access-Control-Max-Age", "86400")?;
+    let headers = build_cors_headers(&origin)?;
 
     Ok(Response::empty()?.with_headers(headers).with_status(204))
+}
+
+fn build_cors_headers(origin: &str) -> Result<Headers> {
+    let mut headers = Headers::new();
+    headers.set("Access-Control-Allow-Origin", origin)?;
+    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")?;
+    headers.set(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization",
+    )?;
+    headers.set("Access-Control-Allow-Credentials", "true")?;
+    headers.set("Access-Control-Max-Age", "86400")?;
+    Ok(headers)
 }
 
 fn error_response(code: &str, message: &str, status: u16) -> Result<Response> {
     error_response_with_origin(code, message, status, "*")
 }
 
-fn error_response_with_origin(code: &str, message: &str, status: u16, origin: &str) -> Result<Response> {
+fn error_response_with_origin(
+    code: &str,
+    message: &str,
+    status: u16,
+    origin: &str,
+) -> Result<Response> {
     let error = ApiError {
         error: ErrorDetails {
             code: code.to_string(),
