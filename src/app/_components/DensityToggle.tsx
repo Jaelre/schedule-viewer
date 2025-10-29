@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { Density } from './ScheduleGrid/types'
+import { useTelemetry } from '@/app/providers'
 
 export type { Density }
 
@@ -18,12 +19,14 @@ const densityOptions: Array<{ value: Density; label: string; ariaLabel: string }
 
 export function DensityToggle({ onDensityChange, onLegendClick }: DensityToggleProps) {
   const [density, setDensity] = useState<Density>('compact')
+  const { track } = useTelemetry()
 
   const handleToggle = (newDensity: Density) => {
     if (newDensity === density) return
 
     setDensity(newDensity)
     onDensityChange(newDensity)
+    track({ feature: 'density_toggle', action: 'change_density', value: newDensity })
   }
 
   return (
@@ -51,7 +54,10 @@ export function DensityToggle({ onDensityChange, onLegendClick }: DensityToggleP
 
       {onLegendClick && (
         <button
-          onClick={onLegendClick}
+          onClick={() => {
+            track({ feature: 'density_toggle', action: 'open_legend', value: density })
+            onLegendClick()
+          }}
           className="px-2 py-1 text-xs border border-border rounded bg-background hover:bg-accent transition-colors whitespace-nowrap"
           aria-label="Mostra legenda"
         >

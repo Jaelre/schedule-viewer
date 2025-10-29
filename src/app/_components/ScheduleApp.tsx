@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useCallback, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getCurrentYM, isValidYM } from '@/lib/date'
 import { useMonthShifts } from '@/lib/api-client'
@@ -10,6 +10,7 @@ import { DensityToggle, type Density } from './DensityToggle'
 import { ScheduleGrid } from './ScheduleGrid'
 import type { ViewMode } from './ScheduleGrid/types'
 import { LegendModal } from './LegendModal'
+import { useTelemetry } from '@/app/providers'
 
 interface ScheduleAppProps {
   basePath?: string
@@ -26,6 +27,33 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
   const [isLegendOpen, setIsLegendOpen] = useState(false)
 
   const { data, isLoading, error, refetch } = useMonthShifts(currentYM)
+  const { track } = useTelemetry()
+
+  const handleToggleView = useCallback(() => {
+    setViewMode((previous) => {
+      const nextMode: ViewMode = previous === 'people' ? 'shifts' : 'people'
+      track({ feature: 'schedule_app', action: 'toggle_view', value: nextMode })
+      return nextMode
+    })
+  }, [track])
+
+  const handleLegendOpen = useCallback(() => {
+    if (isLegendOpen) return
+    setIsLegendOpen(true)
+    track({ feature: 'schedule_app', action: 'open_legend', value: currentYM })
+  }, [currentYM, isLegendOpen, track])
+
+  const handleRetry = useCallback(() => {
+    track({ feature: 'schedule_app', action: 'retry_fetch', value: currentYM })
+    refetch()
+  }, [currentYM, refetch, track])
+
+  const densityChangeHandler = useCallback(
+    (newDensity: Density) => {
+      setDensity(newDensity)
+    },
+    []
+  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,14 +62,12 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
           <MonthNav currentYM={currentYM} basePath={basePath} />
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <DensityToggle
-              onDensityChange={setDensity}
-              onLegendClick={() => setIsLegendOpen(true)}
+              onDensityChange={densityChangeHandler}
+              onLegendClick={handleLegendOpen}
             />
             <button
               type="button"
-              onClick={() =>
-                setViewMode((prev) => (prev === 'people' ? 'shifts' : 'people'))
-              }
+              onClick={handleToggleView}
               className="px-3 py-1.5 text-sm font-medium rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-secondary/90 transition-colors"
               aria-pressed={viewMode === 'shifts'}
             >
@@ -67,7 +93,7 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
                 {error.message || 'Si è verificato un errore imprevisto'}
               </p>
               <button
-                onClick={() => refetch()}
+                onClick={handleRetry}
                 className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
               >
                 Riprova
