@@ -1,10 +1,10 @@
 'use client'
 
 import { useMemo, useEffect, useRef } from 'react'
-import { getShiftColor } from '@/lib/colors'
 import { resolveShiftLabel } from '@/lib/shift-labels'
 import type { ShiftCodeMap } from '@/lib/types'
 import { useTelemetry } from '@/app/providers'
+import { useRuntimeConfig } from '@/lib/config/runtime-config'
 
 interface LegendModalProps {
   codes: string[]
@@ -16,6 +16,7 @@ interface LegendModalProps {
 
 export function LegendModal({ codes, shiftNames, codeMap, isOpen, onClose }: LegendModalProps) {
   const { track } = useTelemetry()
+  const { getShiftColor } = useRuntimeConfig()
   const legend = useMemo(() => {
     return codes.map((code) => {
       const colors = getShiftColor(code)
@@ -27,7 +28,7 @@ export function LegendModal({ codes, shiftNames, codeMap, isOpen, onClose }: Leg
         colors,
       }
     })
-  }, [codes, shiftNames, codeMap])
+  }, [codes, shiftNames, codeMap, getShiftColor])
 
   // Handle escape key
   useEffect(() => {

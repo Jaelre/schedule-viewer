@@ -5,8 +5,8 @@ Monthly schedule explorer for emergency department shifts. The UI is built with 
 ## Highlights
 - Virtualised month grid renders 100+ clinicians smoothly, with multi-shift-per-day support and density toggle.
 - Italian locale by default (Europe/Rome timezone, Italian labels and holidays).
-- Deterministic, accessible colour palette with overrides in `src/lib/shift-colors.json`.
-- Configurable dictionary for shift labels via `NEXT_PUBLIC_SHIFT_CODE_DICT` and doctor name mapping via `src/lib/doctor-names.json`.
+- Deterministic, accessible colour palette with overrides in `public/config/shift-colors.json`.
+- Configurable dictionary for shift labels via `NEXT_PUBLIC_SHIFT_CODE_DICT` and doctor name mapping via `public/config/doctor-names.json`.
 - Cloudflare Worker proxies all data access, injects secrets, retries upstream failures and keeps a short-lived in-memory cache.
 - Client refreshes data every 10 minutes and surfaces clear loading/error states.
 - `/pdf` route genera una versione scaricabile in PDF direttamente nel browser con un generatore personalizzato.
@@ -69,10 +69,9 @@ schedule-viewer/
    Refer to [docs/access-gate.md](docs/access-gate.md#worker-managed-client-token-flow) for details on how the token-based access gate works.
 
 4. (Optional) adjust local dictionaries and styling overrides:
-   - Copy `src/config/doctor-names.json.example` to `src/config/doctor-names.json` and edit the `names` map to control how IDs render in the grid.
-   - Copy `src/config/shift-colors.json.example` to `src/config/shift-colors.json` if you need to fine-tune colour contrast per shift code.
-   - Copy `src/config/shift-display.config.example.json` to `src/config/shift-display.config.json` to normalise aliases and override the labels shown in the grid, legend, and PDF (for example, mapping "Nights" to `N`).
-   - Update `src/config/shift-styling.config.json` to enable the conditional underline helper (ships empty by default). The example at `src/config/shift-styling.config.example.json` documents the weekday indexes. (Note that underline was changed to overline, for simplicity no other name was changed as it didn't affect features)
+   - The static export reads JSON files from `public/config/*.json`. Update those files directly (or replace them in Cloudflare Pages) to change doctor names, colour palettes, or styling without rebuilding the site.
+   - Reference the templates under `public/config` (e.g. `doctor-names.json.example`, `shift-colors.json.example`, `shift-display.config.example.json`, `shift-styling.config.example.json`) when creating new runtime JSON files.
+   - Copy `public/config/shift-display.config.example.json` to `public/config/shift-display.config.json` to normalise aliases and override the labels shown in the grid and legend (for example, mapping "Nights" to `N`).
 
 5. Start the Next.js dev server:
 
@@ -186,7 +185,7 @@ Error envelope:
 - **Missing API token**: run `wrangler secret put API_TOKEN` in `worker/` and redeploy/restart.
 - **Frontend shows empty grid**: verify the Worker URL in `.env.local` and check the browser console for errors from `/api/shifts`.
 - **Upstream timeouts**: consider raising `API_TIMEOUT_MS` in `worker/wrangler.toml`; the Worker currently retries twice before surfacing `UPSTREAM_TIMEOUT`.
-- **Styling issues after colour changes**: ensure HSL values in `src/lib/shift-colors.json` maintain sufficient contrast; the fallback generator covers undefined codes.
+- **Styling issues after colour changes**: ensure HSL values in `public/config/shift-colors.json` maintain sufficient contrast; the fallback generator covers undefined codes.
 
 ## License
 

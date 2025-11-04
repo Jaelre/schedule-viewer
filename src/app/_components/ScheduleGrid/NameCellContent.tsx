@@ -1,6 +1,6 @@
 'use client'
 
-import fullNameOverridesConfig from '@/config/full-name-overrides.json'
+import { useRuntimeConfig } from '@/lib/config/runtime-config'
 
 import { getNameAbbreviation } from './utils'
 import { useAdaptiveCompactName } from './useAdaptiveCompactName'
@@ -12,22 +12,14 @@ interface NameCellContentProps {
   isExtraCompact: boolean
 }
 
-const FULL_NAME_OVERRIDES = new Set(
-  (Array.isArray(fullNameOverridesConfig)
-    ? fullNameOverridesConfig
-    : []
-  )
-    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
-    .map((name) => name.trim().toLowerCase())
-)
-
 export function NameCellContent({
   person,
   isHorizontalScrollActive,
   isExtraCompact,
 }: NameCellContentProps) {
+  const { fullNameOverrideSet } = useRuntimeConfig()
   const normalizedName = person.resolvedName.trim().toLowerCase()
-  const shouldForceFullName = FULL_NAME_OVERRIDES.has(normalizedName)
+  const shouldForceFullName = fullNameOverrideSet.has(normalizedName)
   const showFullNameInCompact = isHorizontalScrollActive && shouldForceFullName
 
   const { ref: nameRef, style } = useAdaptiveCompactName(
