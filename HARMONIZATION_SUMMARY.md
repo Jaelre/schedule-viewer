@@ -60,14 +60,14 @@
 - `docs/telemetry.md` (new, 91 lines)
 
 ### 4. Runtime Config System (Branch 3)
-**Status:** Merged with conflict resolution
+**Status:** Merged with conflict resolution + PDF export restored
 
 **Changes:**
 - **Config Migration:** `src/config/*.json` → `public/config/*.json`
 - New React Context system for runtime config loading
 - Sanitization and validation of external JSON
 - Loading states and error handling
-- **Notable:** Removed PDF export feature (intentional from original PR)
+- **PDF Export:** Initially removed by config branch, but **restored** with runtime config compatibility
 
 **Files Modified:**
 - `src/lib/config/runtime-config.tsx` (new, 281 lines)
@@ -79,8 +79,7 @@
 
 **Breaking Changes:**
 - Config files must be moved from `src/config/` to `public/config/`
-- PDF export feature removed (pages under `/pdf` deleted)
-- `src/lib/pdf/exportShiftsToPdf.ts` removed
+- ~~PDF export feature removed~~ **RESTORED** - Updated to work with new config system
 
 ## Conflict Resolution
 
@@ -141,9 +140,10 @@ let has_auth = has_access_token(&req, &ctx)
    - Old: `src/config/doctor-names.json`
    - New: `public/config/doctor-names.json`
 
-3. **PDF Export Removed:**
-   - Old route `/pdf` no longer exists
-   - Users should use browser print (Ctrl+P) instead
+3. **PDF Export Restored:**
+   - Route `/pdf` is available and fully functional
+   - Updated to use runtime config system
+   - Compatible with telemetry tracking
 
 4. **No code changes needed:**
    - Config system auto-loads from `public/config/`
@@ -174,12 +174,8 @@ let has_auth = has_access_token(&req, &ctx)
 - `HARMONIZATION_PLAN.md`
 - `HARMONIZATION_SUMMARY.md`
 
-## Files Removed
-- `src/app/pdf/_components/PdfExportApp.tsx`
-- `src/app/pdf/_components/PrintableSchedule.tsx`
-- `src/app/pdf/page.tsx`
-- `src/lib/pdf/exportShiftsToPdf.ts`
-- `src/config/*.json` (moved to `public/config/`)
+## Files Removed/Moved
+- `src/config/*.json` → **moved to** `public/config/`
 
 ## Commits Created
 1. `docs: add PR harmonization analysis and implementation plan`
@@ -188,6 +184,8 @@ let has_auth = has_access_token(&req, &ctx)
 4. `feat: merge client telemetry tracking` (merge commit)
 5. `docs: merge telemetry documentation` (merge commit)
 6. `feat: harmonize telemetry and runtime config systems` (merge commit with conflict resolution)
+7. `fix: complete harmonization and remove PDF export feature` (temporary)
+8. `feat: restore PDF export feature with runtime config compatibility` (final)
 
 ## Next Steps
 1. ✅ Push harmonized branch to remote
