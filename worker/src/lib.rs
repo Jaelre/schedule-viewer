@@ -246,6 +246,92 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     build_success_response(json, cache_ttl_seconds, "MISS")
 }
 
+async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let origin = req
+        .headers()
+        .get("Origin")?
+        .unwrap_or_else(|| "*".to_string());
+
+    let user_agent = req
+        .headers()
+        .get("User-Agent")?
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    let ip_address = req
+        .headers()
+        .get("CF-Connecting-IP")?
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    let region = req
+        .cf()
+        .and_then(|cf| cf.region())
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    let batch: TelemetryBatch = match req.json().await {
+        Ok(body) => body,
+        Err(error) => {
+            console_log!("Failed to parse telemetry batch: {:?}", error);
+            return error_response_with_origin("INVALID_REQUEST", "Invalid JSON", 400, &origin);
+        }
+    };
+
+    // Check auth: first from header, then from body (for sendBeacon requests)
+    let has_auth = has_access_token(&req, &ctx)
+        || batch
+            .auth_token
+            .as_ref()
+            .map(|token| verify_access_token(token, &ctx))
+            .unwrap_or(false);
+
+    if !has_auth {
+        return error_response_with_origin(
+            "UNAUTHORIZED",
+            "Missing or invalid access token",
+            401,
+            &origin,
+        );
+    }
+
+    let TelemetryBatch {
+        events,
+        flush,
+        stream,
+        auth_token: _,
+    } = batch;
+
+    let enriched_events: Vec<EnrichedTelemetryEvent> = events
+        .into_iter()
+        .map(|event| EnrichedTelemetryEvent {
+            fields: event.fields,
+            metadata: TelemetryMetadata {
+                user_agent: user_agent.clone(),
+                ip_address: ip_address.clone(),
+                region: region.clone(),
+                stream: stream.clone(),
+                received_at: Utc::now().to_rfc3339(),
+            },
+        })
+        .collect();
+
+    let ingest_status = {
+        let mut buffer = TELEMETRY_BUFFER.write().expect("telemetry buffer poisoned");
+        buffer.ingest(enriched_events, flush)
+    };
+
+    let status_code = match ingest_status {
+        TelemetryIngestStatus::Noop => 204,
+        TelemetryIngestStatus::Buffered | TelemetryIngestStatus::Flushed => 202,
+    };
+
+    let headers = build_cors_headers(&origin)?;
+    Ok(Response::empty()?
+        .with_headers(headers)
+        .with_status(status_code))
+}
+
 fn get_cached_schedule(ym: &str, ttl_seconds: u64) -> Option<String> {
     if ttl_seconds == 0 {
         return None;
@@ -531,15 +617,19 @@ fn extract_shift_code(alias: &str, shift_display_config: &config::ShiftDisplayCo
     normalised
 }
 
+fn verify_access_token(token: &str, ctx: &RouteContext<()>) -> bool {
+    if let Ok(expected_password) = ctx.secret("ACCESS_PASSWORD") {
+        let expected = expected_password.to_string();
+        return constant_time_eq(token.trim().as_bytes(), expected.trim().as_bytes());
+    }
+    false
+}
+
 fn has_access_token(req: &Request, ctx: &RouteContext<()>) -> bool {
     // Check for token in Authorization header
     if let Ok(Some(auth_header)) = req.headers().get("Authorization") {
         if let Some(token) = auth_header.strip_prefix("Bearer ") {
-            // Get expected password from environment
-            if let Ok(expected_password) = ctx.secret("ACCESS_PASSWORD") {
-                let expected = expected_password.to_string();
-                return constant_time_eq(token.trim().as_bytes(), expected.trim().as_bytes());
-            }
+            return verify_access_token(token, ctx);
         }
     }
     // Fallback: check for old cookie-based auth for backward compatibility

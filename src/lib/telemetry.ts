@@ -101,28 +101,32 @@ class InternalTelemetryClient implements TelemetryClient {
     if (!isBrowser()) return
 
     const token = this.getToken()
-    const body = JSON.stringify({
-      events,
-      authToken: token ?? undefined,
-      sentAt: new Date().toISOString(),
-    })
 
+    // Try sendBeacon first (doesn't support custom headers, so include token in body)
     const canUseBeacon = typeof navigator.sendBeacon === 'function'
-    const beaconSent = canUseBeacon ? navigator.sendBeacon(ENDPOINT, body) : false
-
-    if (beaconSent) {
-      return
+    if (canUseBeacon) {
+      const beaconBody = JSON.stringify({
+        events,
+        authToken: token ?? undefined,
+      })
+      const beaconSent = navigator.sendBeacon(ENDPOINT, beaconBody)
+      if (beaconSent) {
+        return
+      }
     }
 
+    // Fallback to fetch with Authorization header (preferred for foreground requests)
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
 
+    const fetchBody = JSON.stringify({ events })
+
     fetch(ENDPOINT, {
       method: 'POST',
       headers,
-      body,
+      body: fetchBody,
       keepalive: true,
     }).catch(() => {
       // Swallow network errors; telemetry should never block the UI.
