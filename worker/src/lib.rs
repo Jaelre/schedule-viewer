@@ -38,6 +38,8 @@ struct TelemetryBatch {
     flush: bool,
     #[serde(default)]
     stream: Option<String>,
+    #[serde(default, rename = "authToken")]
+    auth_token: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -476,15 +478,6 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         .get("Origin")?
         .unwrap_or_else(|| "*".to_string());
 
-    if !has_access_token(&req, &ctx) {
-        return error_response_with_origin(
-            "UNAUTHORIZED",
-            "Missing or invalid access token",
-            401,
-            &origin,
-        );
-    }
-
     let user_agent = req
         .headers()
         .get("User-Agent")?
@@ -511,10 +504,28 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         }
     };
 
+    // Check auth: first from header, then from body (for sendBeacon requests)
+    let has_auth = has_access_token(&req, &ctx)
+        || batch
+            .auth_token
+            .as_ref()
+            .map(|token| verify_access_token(token, &ctx))
+            .unwrap_or(false);
+
+    if !has_auth {
+        return error_response_with_origin(
+            "UNAUTHORIZED",
+            "Missing or invalid access token",
+            401,
+            &origin,
+        );
+    }
+
     let TelemetryBatch {
         events,
         flush,
         stream,
+        auth_token: _,
     } = batch;
 
     let enriched_events: Vec<EnrichedTelemetryEvent> = events
@@ -828,15 +839,19 @@ fn extract_shift_code(alias: &str) -> String {
     normalised
 }
 
+fn verify_access_token(token: &str, ctx: &RouteContext<()>) -> bool {
+    if let Ok(expected_password) = ctx.secret("ACCESS_PASSWORD") {
+        let expected = expected_password.to_string();
+        return constant_time_eq(token.trim().as_bytes(), expected.trim().as_bytes());
+    }
+    false
+}
+
 fn has_access_token(req: &Request, ctx: &RouteContext<()>) -> bool {
     // Check for token in Authorization header
     if let Ok(Some(auth_header)) = req.headers().get("Authorization") {
         if let Some(token) = auth_header.strip_prefix("Bearer ") {
-            // Get expected password from environment
-            if let Ok(expected_password) = ctx.secret("ACCESS_PASSWORD") {
-                let expected = expected_password.to_string();
-                return constant_time_eq(token.trim().as_bytes(), expected.trim().as_bytes());
-            }
+            return verify_access_token(token, ctx);
         }
     }
     // Fallback: check for old cookie-based auth for backward compatibility
