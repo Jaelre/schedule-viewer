@@ -86,3 +86,8 @@ __pycache__/
 # Local AI tooling artifacts
 .claude/
 .wrangler/
+
+# git-crypt
+# DO NOT ignore .git-crypt/ directory (needed for git-crypt to work)
+# Only ignore git-crypt key file if accidentally placed in repo root
+/git-crypt-key
