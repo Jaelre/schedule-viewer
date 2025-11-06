@@ -25,12 +25,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local env files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production
-.env.development
+# NOTE: Environment files are now tracked and encrypted via git-crypt (see .gitattributes)
+# Keep .env.example files untracked as they are templates
 
 # Vercel
 .vercel
@@ -46,9 +42,8 @@ worker/debug/
 *.pdb
 worker/build/
 worker/.wrangler/
-worker/wrangler-local.toml
-worker/.dev.vars
 Cargo.lock
+# NOTE: worker/.dev.vars and worker/wrangler-local.toml are tracked and encrypted via git-crypt
 
 # Editor
 .vscode/
@@ -65,20 +60,12 @@ Thumbs.db
 .api-samples/
 
 # Sensitive information and private files
-docs/private/
-src/config/doctor-names.json
-src/config/shift-colors.json
-src/config/shift-styling.config.json
-src/config/shift-display.config.json
-*.xlsx
-*.xls
-*.csv
-**/sensitive/
-**/confidential/
+# NOTE: Sensitive files are now tracked and encrypted via git-crypt (see .gitattributes)
+# Only truly generated/temporary files should be ignored here
 claudedocs/
 
 # Python
-scripts/update_siamo_numeri.py
+# NOTE: scripts/update_siamo_numeri.py is tracked and encrypted via git-crypt
 __pycache__/
 *.pyc
 *.pyo
@@ -86,3 +73,8 @@ __pycache__/
 # Local AI tooling artifacts
 .claude/
 .wrangler/
+
+# git-crypt
+# DO NOT ignore .git-crypt/ directory (needed for git-crypt to work)
+# Only ignore git-crypt key file if accidentally placed in repo root
+/git-crypt-key

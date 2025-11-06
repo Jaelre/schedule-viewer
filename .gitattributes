@@ -1,0 +1,35 @@
+# git-crypt configuration for sensitive files
+# Files matching these patterns will be automatically encrypted
+
+# Local environment files
+.env filter=git-crypt diff=git-crypt
+.env.local filter=git-crypt diff=git-crypt
+.env.development.local filter=git-crypt diff=git-crypt
+.env.test.local filter=git-crypt diff=git-crypt
+.env.production filter=git-crypt diff=git-crypt
+.env.development filter=git-crypt diff=git-crypt
+
+# Worker environment variables
+worker/.dev.vars filter=git-crypt diff=git-crypt
+worker/wrangler-local.toml filter=git-crypt diff=git-crypt
+
+# Sensitive configuration files
+src/config/doctor-names.json filter=git-crypt diff=git-crypt
+src/config/shift-colors.json filter=git-crypt diff=git-crypt
+src/config/shift-styling.config.json filter=git-crypt diff=git-crypt
+src/config/shift-display.config.json filter=git-crypt diff=git-crypt
+
+# Private documentation
+docs/private/** filter=git-crypt diff=git-crypt
+
+# Sensitive directories
+**/sensitive/** filter=git-crypt diff=git-crypt
+**/confidential/** filter=git-crypt diff=git-crypt
+
+# Data files (may contain sensitive information)
+*.xlsx filter=git-crypt diff=git-crypt
+*.xls filter=git-crypt diff=git-crypt
+*.csv filter=git-crypt diff=git-crypt
+
+# Python scripts with API access
+scripts/update_siamo_numeri.py filter=git-crypt diff=git-crypt
