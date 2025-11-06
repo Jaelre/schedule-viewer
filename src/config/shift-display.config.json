@@ -2,7 +2,8 @@
   "comment": "Shift label normalization and overrides shared across the app and Worker.",
   "aliases": {
     "night": "N",
-    "nights": "N"
+    "nights": "N",
+    "ward": "P2"
   },
   "labels": {
     "N": "N"
