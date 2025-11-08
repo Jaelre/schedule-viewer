@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::RwLock;
 use worker::*;
 
+mod config;
 mod utils;
 
 const UPSTREAM_TIMEOUT_MESSAGE: &str = "Upstream request timed out";
@@ -27,126 +28,7 @@ struct CachedSchedule {
 static SCHEDULE_CACHE: Lazy<RwLock<HashMap<String, CachedSchedule>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
-#[derive(Deserialize, Default)]
-struct RawShiftDisplayConfig {
-    #[serde(default)]
-    aliases: HashMap<String, String>,
-    #[serde(default)]
-    labels: HashMap<String, String>,
-}
-
-struct ShiftDisplayConfig {
-    alias_map: HashMap<String, String>,
-    label_map: HashMap<String, String>,
-}
-
-impl Default for ShiftDisplayConfig {
-    fn default() -> Self {
-        ShiftDisplayConfig {
-            alias_map: HashMap::new(),
-            label_map: HashMap::new(),
-        }
-    }
-}
-
-impl From<RawShiftDisplayConfig> for ShiftDisplayConfig {
-    fn from(raw: RawShiftDisplayConfig) -> Self {
-        let mut alias_map = HashMap::new();
-        for (key, value) in raw.aliases.into_iter() {
-            let trimmed_key = key.trim().to_lowercase();
-            let trimmed_value = value.trim().to_string();
-            if trimmed_key.is_empty() || trimmed_value.is_empty() {
-                continue;
-            }
-            alias_map.insert(trimmed_key, trimmed_value);
-        }
-
-        let mut label_map = HashMap::new();
-        for (key, value) in raw.labels.into_iter() {
-            let trimmed_key = key.trim().to_string();
-            let trimmed_value = value.trim().to_string();
-            if trimmed_key.is_empty() || trimmed_value.is_empty() {
-                continue;
-            }
-            label_map.insert(trimmed_key.clone(), trimmed_value.clone());
-            label_map.insert(trimmed_key.to_uppercase(), trimmed_value.clone());
-            label_map.insert(trimmed_key.to_lowercase(), trimmed_value.clone());
-        }
-
-        ShiftDisplayConfig {
-            alias_map,
-            label_map,
-        }
-    }
-}
-
-impl ShiftDisplayConfig {
-    fn normalize_token(&self, input: &str) -> String {
-        let trimmed = input.trim();
-        if trimmed.is_empty() {
-            return String::new();
-        }
-
-        let lookup_key = trimmed.to_lowercase();
-        if let Some(value) = self.alias_map.get(&lookup_key) {
-            return value.clone();
-        }
-
-        if let Some(first_chunk) = trimmed.split_whitespace().next() {
-            let chunk_key = first_chunk.trim().to_lowercase();
-            if let Some(value) = self.alias_map.get(&chunk_key) {
-                return value.clone();
-            }
-        }
-
-        trimmed.to_string()
-    }
-
-    fn label_override(&self, key: &str) -> Option<String> {
-        if key.trim().is_empty() {
-            return None;
-        }
-
-        let trimmed = key.trim();
-        self.label_map
-            .get(trimmed)
-            .cloned()
-            .or_else(|| self.label_map.get(&trimmed.to_uppercase()).cloned())
-            .or_else(|| self.label_map.get(&trimmed.to_lowercase()).cloned())
-    }
-
-    fn resolve_label(&self, code: &str, raw_label: &str) -> String {
-        if let Some(override_label) = self.label_override(code) {
-            return override_label;
-        }
-
-        let normalized = self.normalize_token(raw_label);
-        if let Some(override_label) = self.label_override(&normalized) {
-            return override_label;
-        }
-
-        if let Some(override_label) = self.label_override(raw_label) {
-            return override_label;
-        }
-
-        if normalized.is_empty() {
-            return code.to_string();
-        }
-
-        normalized
-    }
-}
-
-static SHIFT_DISPLAY_CONFIG: Lazy<ShiftDisplayConfig> = Lazy::new(|| {
-    let raw_json = include_str!("../../src/config/shift-display.config.json");
-    match serde_json::from_str::<RawShiftDisplayConfig>(raw_json) {
-        Ok(raw) => ShiftDisplayConfig::from(raw),
-        Err(error) => {
-            console_log!("Failed to parse shift display config: {:?}", error);
-            ShiftDisplayConfig::default()
-        }
-    }
-});
+// Config structures moved to config.rs module
 
 // Frontend types (MonthShifts contract)
 #[derive(Serialize)]
@@ -263,6 +145,10 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .get_async("/api/shifts", |req, ctx| async move {
             handle_shifts(req, ctx).await
         })
+        .get_async("/api/config/:name", |req, ctx| async move {
+            let name = ctx.param("name").unwrap_or("").to_string();
+            config::handle_get_config(req, ctx, name).await
+        })
         .run(req, env)
         .await
 }
@@ -296,6 +182,22 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     if let Some(cached_json) = get_cached_schedule(&ym, cache_ttl_seconds) {
         return build_success_response(cached_json, cache_ttl_seconds, "HIT");
     }
+
+    // Fetch shift display config from R2
+    let bucket = ctx.bucket("CONFIG_BUCKET")?;
+    let config_cache_ttl = ctx
+        .var("CONFIG_CACHE_TTL_SECONDS")
+        .ok()
+        .and_then(|v| v.to_string().parse::<u64>().ok())
+        .unwrap_or(300);
+
+    let shift_display_config = match config::get_shift_display_config(&bucket, config_cache_ttl).await {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            console_log!("Failed to fetch shift display config from R2: {:?}, using defaults", e);
+            config::ShiftDisplayConfig::default()
+        }
+    };
 
     // Build upstream URL with token as query parameter
     let upstream_url = format!(
@@ -335,7 +237,7 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     };
 
     // Transform to MonthShifts format
-    let month_shifts = transform_to_month_shifts(ym.clone(), upstream.data);
+    let month_shifts = transform_to_month_shifts(ym.clone(), upstream.data, &shift_display_config);
 
     // Build response with caching
     let json = serde_json::to_string(&month_shifts)?;
@@ -496,7 +398,11 @@ async fn fetch_with_retry(
     }
 }
 
-fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShifts {
+fn transform_to_month_shifts(
+    ym: String,
+    shifts: Vec<UpstreamShift>,
+    shift_display_config: &config::ShiftDisplayConfig,
+) -> MonthShifts {
     // Extract unique people
     let mut people_map: HashMap<String, Person> = HashMap::new();
     let mut shift_codes: HashSet<String> = HashSet::new();
@@ -515,10 +421,10 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
         });
 
         // Extract shift code from alias (remove time portion)
-        let code = extract_shift_code(&shift.shift.alias);
+        let code = extract_shift_code(&shift.shift.alias, shift_display_config);
         if !code.is_empty() {
             shift_codes.insert(code.clone());
-            let resolved_label = SHIFT_DISPLAY_CONFIG.resolve_label(&code, &shift.shift.alias);
+            let resolved_label = shift_display_config.resolve_label(&code, &shift.shift.alias);
             shift_names.insert(code.clone(), resolved_label);
         }
     }
@@ -552,7 +458,7 @@ fn transform_to_month_shifts(ym: String, shifts: Vec<UpstreamShift>) -> MonthShi
             // Extract day from start_time (format: "YYYY-MM-DD HH:MM:SS")
             if let Some(day) = extract_day_from_datetime(&shift.start_time) {
                 if day > 0 && day <= days_in_month {
-                    let code = extract_shift_code(&shift.shift.alias);
+                    let code = extract_shift_code(&shift.shift.alias, shift_display_config);
                     // Append to existing shifts for this day
                     if let Some(ref mut shift_codes) = rows[person_idx][day - 1] {
                         shift_codes.push(code);
@@ -607,7 +513,7 @@ fn extract_day_from_datetime(datetime: &str) -> Option<usize> {
     }
 }
 
-fn extract_shift_code(alias: &str) -> String {
+fn extract_shift_code(alias: &str, shift_display_config: &config::ShiftDisplayConfig) -> String {
     // Extract shift code from alias like "RATM 8:00AM - 2:00PM" -> "RATM"
     // or "FT 8:30am - 6:30" -> "FT"
     // Just take everything before the first space or digit and normalise using config
@@ -617,7 +523,7 @@ fn extract_shift_code(alias: &str) -> String {
         .unwrap_or(alias)
         .trim();
 
-    let normalised = SHIFT_DISPLAY_CONFIG.normalize_token(token);
+    let normalised = shift_display_config.normalize_token(token);
     if normalised.is_empty() {
         return token.to_string();
     }

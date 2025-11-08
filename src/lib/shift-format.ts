@@ -1,6 +1,7 @@
 // lib/shift-format.ts - helpers for presenting shift codes consistently
 
-import { normalizeDisplayToken } from './shift-display-config'
+import { normalizeDisplayToken as normalizeFromStaticConfig } from './shift-display-config'
+import { normalizeDisplayToken as normalizeFromDynamicConfig, type ShiftDisplayConfig } from './config-client'
 
 /**
  * Return the compact shift code used throughout the UI.
@@ -10,8 +11,11 @@ import { normalizeDisplayToken } from './shift-display-config'
  * Grid components trim these values to the leading identifier
  * ("RATM", "FT" in the examples above). The PDF export should
  * mirror the same behaviour so that both views stay aligned.
+ *
+ * @param code - The shift code to format
+ * @param config - Optional dynamic config from R2. If not provided, falls back to static config.
  */
-export function getShiftDisplayCode(code: string): string {
+export function getShiftDisplayCode(code: string, config?: ShiftDisplayConfig): string {
   if (!code) {
     return ''
   }
@@ -34,5 +38,9 @@ export function getShiftDisplayCode(code: string): string {
   const leadingChunk = withoutParen.split(' ')[0]?.trim() ?? ''
   const token = leadingChunk || withoutParen
 
-  return normalizeDisplayToken(token)
+  // Use dynamic config if provided, otherwise fall back to static
+  if (config) {
+    return normalizeFromDynamicConfig(token, config)
+  }
+  return normalizeFromStaticConfig(token)
 }
