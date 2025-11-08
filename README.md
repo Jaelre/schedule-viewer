@@ -40,6 +40,24 @@ schedule-viewer/
 - Rust 1.70+ with the `wasm32-unknown-unknown` target (`rustup target add wasm32-unknown-unknown`).
 - Cloudflare Wrangler CLI (`npm install -g wrangler`).
 - A MetricAid API token for production/real-data usage.
+- **git-crypt** for encrypted file management (see [Git-Crypt Setup](#git-crypt-setup) below).
+
+## Git-Crypt Setup
+
+This repository uses [git-crypt](https://github.com/AGWA/git-crypt) to automatically encrypt sensitive files (environment variables, configuration files, private documentation).
+
+**First-time setup:**
+```bash
+# Install git-crypt (Ubuntu/Debian)
+sudo apt install git-crypt
+
+# Or build from source if needed (see docs/GIT_CRYPT_SETUP.md)
+
+# Unlock the repository to decrypt files
+git-crypt unlock ~/.config/schedule-viewer/git-crypt-key
+```
+
+After unlocking, git-crypt works transparently - files are automatically encrypted on commit and decrypted on checkout. See [docs/GIT_CRYPT_SETUP.md](docs/GIT_CRYPT_SETUP.md) for full documentation.
 
 ## Quick Start
 

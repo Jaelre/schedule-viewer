@@ -16,10 +16,11 @@ export function getNameAbbreviation(name: string): string {
     return parts[0].slice(0, 6)
   }
 
-  const surname = parts[0]
+  // Join all surname parts (excluding the last part which is the given name)
+  const surnameWithoutSpaces = parts.slice(0, -1).join('')
   const givenName = parts[parts.length - 1]
 
-  const surnameChunk = surname.slice(0, 3)
+  const surnameChunk = surnameWithoutSpaces.slice(0, 3)
   const givenNameChunk = givenName.slice(0, 1)
 
   return `${surnameChunk}${givenNameChunk}`
