@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { resolveShiftLabel } from '@/lib/shift-labels'
 import type { ShiftCodeMap } from '@/lib/types'
 import { useRuntimeConfig } from '@/lib/config/runtime-config'
 

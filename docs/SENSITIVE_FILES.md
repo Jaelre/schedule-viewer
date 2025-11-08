@@ -114,6 +114,7 @@ The following files and directories are automatically ignored by git:
 - `public/config/doctor-names.json` - Staff roster with real names served at runtime
 - `public/config/full-name-overrides.json` - Optional overrides for matching case variations of doctor names
 - `public/config/shift-colors.json` - Custom colour palette for shift codes
+- `public/config/shift-display.config.json` - Local overrides for label normalisation
 - `public/config/shift-styling.config.json` - Local styling adjustments for rendered shifts
 - `*.xlsx`, `*.xls`, `*.csv` - Spreadsheet files that may contain sensitive data
 - `**/sensitive/`, `**/confidential/` - Any directories marked as sensitive

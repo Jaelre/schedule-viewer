@@ -88,7 +88,8 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
 
 4. (Optional) adjust local dictionaries and styling overrides:
    - The static export reads JSON files from `public/config/*.json`. Update those files directly (or replace them in Cloudflare Pages) to change doctor names, colour palettes, or styling without rebuilding the site.
-   - Reference the templates under `public/config` (e.g. `doctor-names.json.example`, `shift-styling.config.example.json`) when creating new runtime JSON files.
+   - Reference the templates under `public/config` (e.g. `doctor-names.json.example`, `shift-colors.json.example`, `shift-display.config.example.json`, `shift-styling.config.example.json`) when creating new runtime JSON files.
+   - Copy `public/config/shift-display.config.example.json` to `public/config/shift-display.config.json` to normalise aliases and override the labels shown in the grid and legend (for example, mapping "Nights" to `N`).
 
 5. Start the Next.js dev server:
 

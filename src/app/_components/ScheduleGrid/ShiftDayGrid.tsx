@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { isWeekend, isItalianHoliday } from '@/lib/date'
+import { resolveShiftLabel } from '@/lib/shift-labels'
 import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
 import type { Density, DensitySettings, PersonWithDisplay } from './types'
 import { getNameAbbreviation } from './utils'

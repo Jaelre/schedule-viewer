@@ -2,6 +2,7 @@
 
 import { useRuntimeConfig } from '@/lib/config/runtime-config'
 import { isWeekend, isItalianHoliday, isWeekday } from '@/lib/date'
+import { getShiftDisplayCode } from '@/lib/shift-format'
 import type { DensitySettings } from './types'
 
 interface ShiftCellProps {
@@ -33,6 +34,7 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
           className={`flex flex-col ${isExtraCompact ? 'items-stretch' : 'items-center'} justify-center min-w-0 ${chipGap}`}
         >
           {codes.map((code, idx) => {
+            const displayCode = getShiftDisplayCode(code)
             const colors = getShiftColor(code)
             const underlineConfig = config.shiftStyling.conditionalUnderline
             // Check if conditional underline should be applied

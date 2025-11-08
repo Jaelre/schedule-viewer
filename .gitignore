@@ -65,6 +65,7 @@ public/config/doctor-names.json
 public/config/full-name-overrides.json
 public/config/shift-colors.json
 public/config/shift-styling.config.json
+public/config/shift-display.config.json
 *.xlsx
 *.xls
 *.csv
