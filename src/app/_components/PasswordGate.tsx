@@ -159,6 +159,9 @@ export function PasswordGate({ children }: PasswordGateProps) {
             {isSubmitting ? 'Verifica…' : 'Conferma'}
           </button>
         </form>
+        <p className="text-xs text-muted-foreground text-center">
+          Continuando, accetti l&apos;utilizzo dei cookie necessari al corretto funzionamento del sito.
+        </p>
       </div>
     </div>
   )
