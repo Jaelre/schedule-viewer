@@ -1,0 +1,11 @@
+# Local development secrets
+.dev.vars
+
+# Build artifacts
+build/
+target/
+worker/
+
+# Wrangler local cache
+.wrangler/
+.mf/

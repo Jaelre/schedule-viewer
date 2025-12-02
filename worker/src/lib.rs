@@ -490,7 +490,7 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
             .var("TELEMETRY_LOG_ONLY")
             .ok()
             .and_then(|v| v.to_string().parse::<bool>().ok())
-            .unwrap_or(true);
+            .unwrap_or(false);
 
         let bucket = ctx.bucket("TELEMETRY_BUCKET").ok();
         let _ = flush_events_to_storage(&events, bucket.as_ref(), log_only).await;
