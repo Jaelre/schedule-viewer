@@ -45,7 +45,10 @@ function buildShiftAssignments(
           assignments[code][day] = []
         }
 
-        assignments[code][day].push(person)
+        // Only add person if not already in the array for this code/day
+        if (!assignments[code][day].some((p) => p.id === person.id)) {
+          assignments[code][day].push(person)
+        }
       })
     })
   }
