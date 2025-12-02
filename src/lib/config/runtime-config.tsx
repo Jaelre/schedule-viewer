@@ -37,15 +37,38 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
 const RuntimeConfigContext = createContext<RuntimeConfigContextValue | undefined>(undefined)
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const base = (process.env.NEXT_PUBLIC_CONFIG_BASE_URL || '/config').replace(/\/$/, '')
-  const url = `${base}/${path}`
-  const response = await fetch(url, { cache: 'no-store' })
+  // Use Worker API if available, otherwise fallback to public/config
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL
 
-  if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`)
+  if (apiBaseUrl) {
+    // Fetch from Worker API (R2 storage)
+    // Convert filename to config name (e.g., "doctor-names.json" -> "doctor-names")
+    const configName = path.replace(/\.json$/, '').replace('.config', '')
+    const url = `${apiBaseUrl}/config/${configName}`
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`)
+    }
+
+    return (await response.json()) as T
+  } else {
+    // Fallback to public/config (legacy)
+    const base = (process.env.NEXT_PUBLIC_CONFIG_BASE_URL || '/config').replace(/\/$/, '')
+    const url = `${base}/${path}`
+    const response = await fetch(url, { cache: 'no-store' })
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`)
+    }
+
+    return (await response.json()) as T
   }
-
-  return (await response.json()) as T
 }
 
 function sanitizeDoctorNames(raw: unknown): DoctorNamesDict {

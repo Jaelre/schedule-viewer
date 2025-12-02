@@ -7,6 +7,9 @@ use worker::*;
 
 const CONFIG_DISPLAY: &str = "shift-display.config.json";
 const CONFIG_STYLING: &str = "shift-styling.config.json";
+const CONFIG_COLORS: &str = "shift-colors.json";
+const CONFIG_DOCTOR_NAMES: &str = "doctor-names.json";
+const CONFIG_FULL_NAME_OVERRIDES: &str = "full-name-overrides.json";
 
 #[derive(Clone, Debug)]
 struct CachedConfig {
@@ -180,7 +183,13 @@ async fn fetch_config_from_r2(
         }
         None => {
             console_log!("Config {} not found in R2, using empty default", config_key);
-            return Ok("{}".to_string());
+            // Return appropriate empty default based on config type
+            let default = if config_key.ends_with(".json") && config_key.contains("overrides") {
+                "[]"
+            } else {
+                "{}"
+            };
+            return Ok(default.to_string());
         }
     };
     let json_str = String::from_utf8(bytes.to_vec())
@@ -257,6 +266,9 @@ pub async fn handle_get_config(
     let config_key = match config_name.as_str() {
         "shift-display" => CONFIG_DISPLAY,
         "shift-styling" => CONFIG_STYLING,
+        "shift-colors" => CONFIG_COLORS,
+        "doctor-names" => CONFIG_DOCTOR_NAMES,
+        "full-name-overrides" => CONFIG_FULL_NAME_OVERRIDES,
         _ => {
             return Response::error("Invalid config name", 400);
         }

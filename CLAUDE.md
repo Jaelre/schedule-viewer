@@ -76,10 +76,10 @@ npm run dev
 **Critical**: `rows` is pre-computed for O(1) lookup. `rows[i][d]` gives array of shift codes for person `i` on day `d+1` (zero-indexed array, 1-indexed days). Each cell can contain multiple shifts (e.g., morning + afternoon) which are displayed stacked vertically in the grid.
 
 ### Worker Responsibilities
-- **Security**: Inject `API_TOKEN` from env (never exposed to browser)
+- **Security**: Inject `API_TOKEN` from env (never exposed to browser), serve all configs from private R2 storage
 - **Validation**: Check `ym` format (YYYY-MM), year 2000-2100, month 01-12
 - **Transform**: Upstream shifts → normalized `rows` matrix + `people` array
-- **R2 Config**: Fetch shift display/styling configs from R2 with 5min cache
+- **R2 Config**: Fetch all configuration files from R2 with 5min cache (shift display, styling, colors, doctor names, overrides)
 - **Caching**: Set `Cache-Control: public, max-age=300` (5 minutes)
 - **Retry**: Up to 2 retries on 5xx errors
 - **CORS**: `Access-Control-Allow-Origin: *` for public data
@@ -172,6 +172,9 @@ wrangler r2 bucket create schedule-viewer-config-preview
 **2. Edit Config Files Locally**:
 - `src/config/shift-display.config.json` - Shift code aliases and labels
 - `src/config/shift-styling.config.json` - Conditional styling rules
+- `src/config/shift-colors.json` - Color definitions for shift codes
+- `src/config/doctor-names.json` - Doctor name mappings (API IDs to real names)
+- `src/config/full-name-overrides.json` - List of doctors to show full names for
 
 **3. Upload to R2**:
 ```bash
@@ -190,10 +193,13 @@ wrangler r2 bucket create schedule-viewer-config-preview
 **Config Endpoints**:
 - `GET /api/config/shift-display` - Returns shift display config
 - `GET /api/config/shift-styling` - Returns shift styling config
+- `GET /api/config/shift-colors` - Returns shift color definitions
+- `GET /api/config/doctor-names` - Returns doctor name mappings
+- `GET /api/config/full-name-overrides` - Returns full name override list
 
 **Fallback Behavior**:
-- If R2 fetch fails, Worker uses empty defaults
-- Frontend falls back to static config files from build
+- If R2 fetch fails, Worker uses empty defaults ({} for objects, [] for arrays)
+- Frontend gracefully handles missing configs with built-in defaults
 
 ### Adding a New Shift Code (Legacy Method)
 1. Update `NEXT_PUBLIC_SHIFT_CODE_DICT` in `.env.local`

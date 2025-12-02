@@ -61,11 +61,8 @@ Thumbs.db
 
 # Sensitive information and private files
 docs/private/
-public/config/doctor-names.json
-public/config/full-name-overrides.json
-public/config/shift-colors.json
-public/config/shift-styling.config.json
-public/config/shift-display.config.json
+# NOTE: Config files are now in src/config/ and tracked/encrypted via git-crypt (see .gitattributes)
+# They are uploaded to R2 storage and served via Worker API
 *.xlsx
 *.xls
 *.csv

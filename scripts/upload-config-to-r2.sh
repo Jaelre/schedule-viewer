@@ -42,6 +42,9 @@ CONFIG_DIR="src/config"
 FILES=(
   "shift-display.config.json"
   "shift-styling.config.json"
+  "shift-colors.json"
+  "doctor-names.json"
+  "full-name-overrides.json"
 )
 
 echo ""
@@ -78,7 +81,13 @@ echo "To verify, run:"
 if [ -n "$WRANGLER_FLAGS" ]; then
   echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-display.config.json --remote"
   echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-styling.config.json --remote"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-colors.json --remote"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-names.json --remote"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/full-name-overrides.json --remote"
 else
   echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-display.config.json"
   echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-styling.config.json"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-colors.json"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-names.json"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/full-name-overrides.json"
 fi
