@@ -228,14 +228,14 @@ export function ShiftDayGrid({
                   }}
                 >
                   {doctors.length > 0 ? (
-                    doctors.map((doctor) => {
+                    doctors.map((doctor, idx) => {
                       const abbreviatedName = getNameAbbreviation(
                         doctor.resolvedName
                       )
 
                       return (
                         <div
-                          key={`${code}-${day}-${doctor.id}`}
+                          key={`${code}-${day}-${doctor.id}-${idx}`}
                           className="flex items-center gap-2 min-w-0 w-full"
                           title={`${doctor.resolvedName}${doctor.pseudonym ? ` (${doctor.pseudonym})` : ''}`}
                         >
