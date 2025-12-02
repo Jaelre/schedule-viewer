@@ -10,11 +10,17 @@ binding = "CONFIG_BUCKET"
 bucket_name = "schedule-viewer-config"
 preview_bucket_name = "schedule-viewer-config-preview"
 
+[[r2_buckets]]
+binding = "TELEMETRY_BUCKET"
+bucket_name = "schedule-viewer-telemetry"
+preview_bucket_name = "schedule-viewer-telemetry-preview"
+
 [vars]
 API_BASE_URL = "https://api.metricaid.com"
 API_TIMEOUT_MS = "8000"
 CACHE_TTL_SECONDS = "900"
 CONFIG_CACHE_TTL_SECONDS = "300"
+TELEMETRY_LOG_ONLY = "false"
 
 # API_TOKEN should be set as a secret via:
 # wrangler secret put API_TOKEN

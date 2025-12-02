@@ -50,7 +50,7 @@ struct TelemetryEvent {
     fields: JsonMap,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct EnrichedTelemetryEvent {
     #[serde(flatten)]
     fields: JsonMap,
@@ -93,7 +93,7 @@ impl TelemetryBuffer {
         &mut self,
         new_events: Vec<EnrichedTelemetryEvent>,
         force_flush: bool,
-    ) -> TelemetryIngestStatus {
+    ) -> TelemetryIngestResult {
         let has_new = !new_events.is_empty();
         if has_new {
             self.events.extend(new_events);
@@ -107,37 +107,15 @@ impl TelemetryBuffer {
             force_flush || self.events.len() >= TELEMETRY_BUFFER_MAX_EVENTS || ttl_elapsed;
 
         if should_flush && !self.events.is_empty() {
-            self.flush(now);
-            TelemetryIngestStatus::Flushed
+            let events_to_flush = self.events.clone();
+            self.events.clear();
+            self.last_flush = now;
+            TelemetryIngestResult::Flush(events_to_flush)
         } else if has_new {
-            TelemetryIngestStatus::Buffered
+            TelemetryIngestResult::Buffered
         } else {
-            TelemetryIngestStatus::Noop
+            TelemetryIngestResult::Noop
         }
-    }
-
-    fn flush(&mut self, timestamp: DateTime<Utc>) {
-        if self.events.is_empty() {
-            self.last_flush = timestamp;
-            return;
-        }
-
-        match serde_json::to_string(&self.events) {
-            Ok(payload) => {
-                console_log!(
-                    "Telemetry flush ({} events) at {}: {}",
-                    self.events.len(),
-                    timestamp.to_rfc3339(),
-                    payload
-                );
-            }
-            Err(error) => {
-                console_log!("Failed to serialise telemetry events: {:?}", error);
-            }
-        }
-
-        self.events.clear();
-        self.last_flush = timestamp;
     }
 }
 
@@ -147,10 +125,10 @@ impl Default for TelemetryBuffer {
     }
 }
 
-enum TelemetryIngestStatus {
+enum TelemetryIngestResult {
     Noop,
     Buffered,
-    Flushed,
+    Flush(Vec<EnrichedTelemetryEvent>),
 }
 
 // Frontend types (MonthShifts contract)
@@ -373,6 +351,58 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     build_success_response(json, cache_ttl_seconds, "MISS")
 }
 
+async fn flush_events_to_storage(
+    events: &[EnrichedTelemetryEvent],
+    bucket: Option<&Bucket>,
+    log_only: bool,
+) -> Result<()> {
+    let payload = serde_json::to_string(&events)
+        .map_err(|e| Error::RustError(format!("Failed to serialize telemetry: {}", e)))?;
+
+    // Always log for debugging
+    console_log!(
+        "Telemetry flush ({} events) at {}: {}",
+        events.len(),
+        Utc::now().to_rfc3339(),
+        if log_only { &payload } else { "[see R2]" }
+    );
+
+    if log_only {
+        return Ok(());
+    }
+
+    // Store to R2: <ymd>/<uuid>.jsonl
+    let bucket = match bucket {
+        Some(b) => b,
+        None => {
+            console_log!("TELEMETRY_BUCKET not configured, cannot persist to R2");
+            return Ok(());
+        }
+    };
+
+    let now = Utc::now();
+    let date_path = now.format("%Y%m%d").to_string();
+    let uuid = uuid::Uuid::new_v4().to_string();
+    let key = format!("{}/{}.jsonl", date_path, uuid);
+
+    // Convert events to JSONL format (one JSON object per line)
+    let jsonl: String = events
+        .iter()
+        .filter_map(|event| serde_json::to_string(event).ok())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    bucket
+        .put(&key, jsonl.into_bytes())
+        .execute()
+        .await
+        .map_err(|e| Error::RustError(format!("Failed to write to R2: {:?}", e)))?;
+
+    console_log!("Telemetry written to R2: {}", key);
+
+    Ok(())
+}
+
 async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let origin = req
         .headers()
@@ -443,15 +473,28 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         })
         .collect();
 
-    let ingest_status = {
+    let ingest_result = {
         let mut buffer = TELEMETRY_BUFFER.write().expect("telemetry buffer poisoned");
         buffer.ingest(enriched_events, flush)
     };
 
-    let status_code = match ingest_status {
-        TelemetryIngestStatus::Noop => 204,
-        TelemetryIngestStatus::Buffered | TelemetryIngestStatus::Flushed => 202,
+    let status_code = match &ingest_result {
+        TelemetryIngestResult::Noop => 204,
+        TelemetryIngestResult::Buffered => 202,
+        TelemetryIngestResult::Flush(_) => 202,
     };
+
+    // Perform async flush if needed
+    if let TelemetryIngestResult::Flush(events) = ingest_result {
+        let log_only = ctx
+            .var("TELEMETRY_LOG_ONLY")
+            .ok()
+            .and_then(|v| v.to_string().parse::<bool>().ok())
+            .unwrap_or(true);
+
+        let bucket = ctx.bucket("TELEMETRY_BUCKET").ok();
+        let _ = flush_events_to_storage(&events, bucket.as_ref(), log_only).await;
+    }
 
     let headers = build_cors_headers(&origin)?;
     Ok(Response::empty()?
