@@ -276,7 +276,7 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             handle_shifts(req, ctx).await
         })
         .get_async("/api/config/:name", |req, ctx| async move {
-            let name = ctx.param("name").unwrap_or("").to_string();
+            let name = ctx.param("name").map_or("".to_string(), |v| v.to_string());
             config::handle_get_config(req, ctx, name).await
         })
         .post_async("/api/telemetry", |req, ctx| async move {
@@ -496,7 +496,7 @@ fn store_schedule_in_cache(ym: &str, json: String) {
 }
 
 fn build_success_response(json: String, ttl_seconds: u64, cache_status: &str) -> Result<Response> {
-    let mut headers = Headers::new();
+    let headers = Headers::new();
     headers.set("Content-Type", "application/json")?;
     headers.set(
         "Cache-Control",
@@ -783,7 +783,7 @@ async fn handle_check_access(req: Request, ctx: RouteContext<()>) -> Result<Resp
     };
 
     let json = serde_json::to_string(&response)?;
-    let mut headers = Headers::new();
+    let headers = Headers::new();
     headers.set("Content-Type", "application/json")?;
     headers.set("Access-Control-Allow-Origin", &origin)?;
     headers.set("Access-Control-Allow-Credentials", "true")?;
@@ -834,7 +834,7 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
         };
 
         let json = serde_json::to_string(&response)?;
-        let mut headers = Headers::new();
+        let headers = Headers::new();
         headers.set("Content-Type", "application/json")?;
         headers.set("Access-Control-Allow-Origin", &origin)?;
         headers.set("Access-Control-Allow-Credentials", "true")?;
@@ -851,7 +851,7 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
     };
 
     let json = serde_json::to_string(&response)?;
-    let mut headers = Headers::new();
+    let headers = Headers::new();
     headers.set("Content-Type", "application/json")?;
     headers.set("Access-Control-Allow-Origin", &origin)?;
     headers.set("Access-Control-Allow-Credentials", "true")?;
@@ -872,7 +872,7 @@ fn handle_options_with_origin(req: &Request) -> Result<Response> {
 }
 
 fn build_cors_headers(origin: &str) -> Result<Headers> {
-    let mut headers = Headers::new();
+    let headers = Headers::new();
     headers.set("Access-Control-Allow-Origin", origin)?;
     headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")?;
     headers.set(
@@ -902,7 +902,7 @@ fn error_response_with_origin(
     };
 
     let json = serde_json::to_string(&error)?;
-    let mut headers = Headers::new();
+    let headers = Headers::new();
     headers.set("Content-Type", "application/json")?;
     headers.set("Access-Control-Allow-Origin", origin)?;
     headers.set("Access-Control-Allow-Credentials", "true")?;

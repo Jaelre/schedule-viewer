@@ -172,16 +172,17 @@ async fn fetch_config_from_r2(
     console_log!("Fetching config from R2: {}", config_key);
     let object = bucket.get(config_key).execute().await?;
 
-    let body = match object {
-        Some(obj) => obj.body()
-            .ok_or_else(|| Error::RustError(format!("Config {} has no body", config_key)))?,
+    let bytes = match object {
+        Some(obj) => {
+            let body = obj.body()
+                .ok_or_else(|| Error::RustError(format!("Config {} has no body", config_key)))?;
+            body.bytes().await?
+        }
         None => {
             console_log!("Config {} not found in R2, using empty default", config_key);
             return Ok("{}".to_string());
         }
     };
-
-    let bytes = body.bytes().await?;
     let json_str = String::from_utf8(bytes.to_vec())
         .map_err(|e| Error::RustError(format!("Invalid UTF-8 in config {}: {}", config_key, e)))?;
 
@@ -263,7 +264,7 @@ pub async fn handle_get_config(
 
     match fetch_config_from_r2(&bucket, config_key, cache_ttl_seconds).await {
         Ok(json_str) => {
-            let mut headers = Headers::new();
+            let headers = Headers::new();
             headers.set("Content-Type", "application/json")?;
             headers.set("Cache-Control", &format!("public, max-age={}", cache_ttl_seconds))?;
             headers.set("Access-Control-Allow-Origin", "*")?;
