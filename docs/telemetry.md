@@ -64,28 +64,58 @@ Incoming batches are handled by the Worker route at `/api/telemetry`:
 
 1. Requests must include the same `Authorization: Bearer <token>` header issued
    by `/api/access`; unauthenticated requests are rejected with 401.
-2. When `TELEMETRY_LOG_ONLY=true`, the Worker writes each event to structured
-   logs (visible via `wrangler tail`) and returns immediately. This is the
-   default behaviour for development.
-3. When `TELEMETRY_R2_BUCKET` is defined, batches are persisted to the named R2
-   bucket with one object per upload. Objects are stored under
-   `<ymd>/<uuid>.jsonl` so they can be processed later with analytics tooling.
+2. When `TELEMETRY_LOG_ONLY=true` (default), the Worker writes each event to
+   structured logs (visible via `wrangler tail` or Cloudflare Dashboard) and
+   returns immediately without persisting to R2.
+3. When `TELEMETRY_LOG_ONLY=false` and the `TELEMETRY_BUCKET` R2 binding is
+   configured, batches are persisted to R2 with one object per flush. Objects
+   are stored under `<yyyymmdd>/<uuid>.jsonl` so they can be processed later
+   with analytics tooling.
 
 No raw telemetry is stored in the browser; once the flush promise resolves the
 queue is cleared.
+
+### R2 bucket configuration
+
+To enable R2 storage for telemetry:
+
+1. Create the R2 buckets (one-time setup):
+   ```bash
+   wrangler r2 bucket create schedule-viewer-telemetry
+   wrangler r2 bucket create schedule-viewer-telemetry-preview
+   ```
+
+2. The buckets are already configured in `wrangler.toml` with binding `TELEMETRY_BUCKET`.
+
+3. Set `TELEMETRY_LOG_ONLY=false` in `wrangler.toml` (or leave as default for log-only mode).
+
+4. Deploy the worker:
+   ```bash
+   cd worker && wrangler deploy
+   ```
 
 ## Inspecting telemetry output
 
 Use the following approaches to confirm telemetry delivery end-to-end:
 
-- **Local development** – Run `wrangler dev --config worker/wrangler.toml` and
-  inspect console output; the Worker prints the decoded batch when
-  `TELEMETRY_LOG_ONLY` is true.
-- **Tail production traffic** – Execute `wrangler tail` with the production
-  environment bindings to stream structured logs from the live Worker.
-- **Review persisted batches** – If R2 storage is enabled, list objects with
-  `wrangler r2 object list <bucket>` and download the relevant JSONL files for
-  offline analysis.
+- **Local development** – Run `cd worker && wrangler dev` and inspect console
+  output; the Worker always prints a summary when flushing events. Full event
+  payloads are logged when `TELEMETRY_LOG_ONLY=true`.
+- **Tail production traffic** – Execute `wrangler tail` to stream structured
+  logs from the live Worker in real-time.
+- **Cloudflare Dashboard** – View logs in the Cloudflare dashboard under your
+  Worker's "Logs" tab for historical access.
+- **Review persisted batches** – If R2 storage is enabled
+  (`TELEMETRY_LOG_ONLY=false`), list objects with
+  `wrangler r2 object list schedule-viewer-telemetry` and download the relevant
+  JSONL files for offline analysis:
+  ```bash
+  # List all telemetry files
+  wrangler r2 object list schedule-viewer-telemetry
+
+  # Download a specific file
+  wrangler r2 object get schedule-viewer-telemetry/<yyyymmdd>/<uuid>.jsonl --file telemetry.jsonl
+  ```
 
 Refer back to [docs/access-gate.md](access-gate.md#telemetry-and-token-reuse)
 for guidance on reusing the access gate token and rotating credentials.

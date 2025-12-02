@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
+import { useTelemetry } from '@/app/providers'
 
 interface PasswordGateProps {
   children: ReactNode
@@ -12,6 +13,7 @@ export function PasswordGate({ children }: PasswordGateProps) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { track } = useTelemetry()
 
   useEffect(() => {
     // Check if we have a token in localStorage
@@ -55,6 +57,13 @@ export function PasswordGate({ children }: PasswordGateProps) {
     event.preventDefault()
 
     const trimmedPassword = password.trim()
+
+    track({
+      feature: 'password_gate',
+      action: 'submit',
+      value: trimmedPassword ? 'filled' : 'empty',
+    })
+
     if (!trimmedPassword) {
       setError('Inserisci la password.')
       return
@@ -83,6 +92,7 @@ export function PasswordGate({ children }: PasswordGateProps) {
           setPassword('')
           setError('')
           setHasAccess(true)
+          track({ feature: 'password_gate', action: 'submit_result', value: 'success' })
           return
         }
       }
@@ -90,13 +100,16 @@ export function PasswordGate({ children }: PasswordGateProps) {
       const data = await response.json().catch(() => null)
       if (data && typeof data.error === 'string') {
         setError(data.error)
+        track({ feature: 'password_gate', action: 'submit_result', value: 'invalid' })
         return
       }
 
       setError('Password non valida. Riprova.')
+      track({ feature: 'password_gate', action: 'submit_result', value: 'invalid' })
     } catch (requestError) {
       console.error('Password verification failed', requestError)
       setError('Si è verificato un errore nella verifica della password.')
+      track({ feature: 'password_gate', action: 'submit_result', value: 'error' })
     } finally {
       setIsSubmitting(false)
     }
@@ -146,6 +159,9 @@ export function PasswordGate({ children }: PasswordGateProps) {
             {isSubmitting ? 'Verifica…' : 'Conferma'}
           </button>
         </form>
+        <p className="text-xs text-muted-foreground text-center">
+          Continuando, accetti l&apos;utilizzo dei cookie necessari al corretto funzionamento del sito.
+        </p>
       </div>
     </div>
   )

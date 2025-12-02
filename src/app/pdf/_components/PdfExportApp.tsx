@@ -9,10 +9,12 @@ import { useMonthShifts } from '@/lib/api-client'
 import { shiftCodeMap } from '@/lib/shift-code-map'
 import { exportShiftsToPdf } from '@/lib/pdf/exportShiftsToPdf'
 import { PrintableSchedule } from './PrintableSchedule'
+import { useTelemetry } from '@/app/providers'
 
 export function PdfExportApp() {
   const searchParams = useSearchParams()
   const ymParam = searchParams.get('ym')
+  const { track } = useTelemetry()
 
   const currentYM = ymParam && isValidYM(ymParam) ? ymParam : getCurrentYM()
 
@@ -31,10 +33,13 @@ export function PdfExportApp() {
 
     setExportError(null)
     setIsExporting(true)
+    track({ feature: 'pdf_export', action: 'export_start', value: currentYM })
     try {
       await exportShiftsToPdf(data, printableRef.current)
+      track({ feature: 'pdf_export', action: 'export_success', value: currentYM })
     } catch (err) {
       console.error('Failed to export PDF', err)
+      track({ feature: 'pdf_export', action: 'export_error', value: currentYM })
       setExportError(
         err instanceof Error
           ? err.message
@@ -43,7 +48,7 @@ export function PdfExportApp() {
     } finally {
       setIsExporting(false)
     }
-  }, [data])
+  }, [data, currentYM, track])
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,7 +75,7 @@ export function PdfExportApp() {
             </p>
           </div>
 
-          
+
 
           {exportError && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">

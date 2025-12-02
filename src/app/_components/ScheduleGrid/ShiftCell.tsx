@@ -1,17 +1,9 @@
-import shiftStylingConfig from '@/config/shift-styling.config.json'
+'use client'
+
+import { useRuntimeConfig } from '@/lib/config/runtime-config'
 import { isWeekend, isItalianHoliday, isWeekday } from '@/lib/date'
-import { getShiftColor } from '@/lib/colors'
 import { getShiftDisplayCode } from '@/lib/shift-format'
 import type { DensitySettings } from './types'
-
-type ShiftStylingConfig = {
-  conditionalUnderline?: {
-    shiftCode: string
-    weekdays: number[]
-  }
-}
-
-const resolvedShiftStylingConfig: ShiftStylingConfig = shiftStylingConfig as ShiftStylingConfig
 
 interface ShiftCellProps {
   ym: string
@@ -24,6 +16,7 @@ interface ShiftCellProps {
 
 export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCompact }: ShiftCellProps) {
   const { cellPadding, cellHeight, textSize, placeholderText, chipClass, chipGap } = densitySettings
+  const { getShiftColor, config } = useRuntimeConfig()
 
   const isWeekendDay = isWeekend(ym, day)
   const isHoliday = isItalianHoliday(ym, day)
@@ -42,19 +35,21 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
         >
           {codes.map((code, idx) => {
             const displayCode = getShiftDisplayCode(code)
+            const colors = getShiftColor(displayCode)
+            const underlineConfig = config.shiftStyling.conditionalUnderline
             // Check if conditional underline should be applied
             const shouldUnderline =
-              resolvedShiftStylingConfig.conditionalUnderline &&
-              code === resolvedShiftStylingConfig.conditionalUnderline.shiftCode &&
-              isWeekday(ym, day, resolvedShiftStylingConfig.conditionalUnderline.weekdays)
+              underlineConfig !== undefined &&
+              code === underlineConfig.shiftCode &&
+              isWeekday(ym, day, underlineConfig.weekdays)
 
             return (
               <span
                 key={`${personId}-${day}-${idx}`}
                 className={`${isExtraCompact ? 'w-full px-1.5 py-1' : 'rounded'} font-semibold whitespace-nowrap ${isExtraCompact ? 'text-[0.7rem] leading-tight' : chipClass} ${shouldUnderline ? 'overline' : ''}`}
                 style={{
-                  backgroundColor: getShiftColor(code).background,
-                  color: getShiftColor(code).text,
+                  backgroundColor: colors.background,
+                  color: colors.text,
                 }}
                 title={code}
               >

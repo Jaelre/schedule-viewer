@@ -13,11 +13,12 @@
 worker/.dev.vars filter=git-crypt diff=git-crypt
 worker/wrangler-local.toml filter=git-crypt diff=git-crypt
 
-# Sensitive configuration files
+# Sensitive configuration files (now stored in R2, these are source files for upload)
 src/config/doctor-names.json filter=git-crypt diff=git-crypt
 src/config/shift-colors.json filter=git-crypt diff=git-crypt
 src/config/shift-styling.config.json filter=git-crypt diff=git-crypt
 src/config/shift-display.config.json filter=git-crypt diff=git-crypt
+src/config/full-name-overrides.json filter=git-crypt diff=git-crypt
 
 # Private documentation
 docs/private/** filter=git-crypt diff=git-crypt

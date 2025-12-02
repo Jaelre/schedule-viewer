@@ -61,6 +61,7 @@ npm run dev
 2. **React Query**: Caches with key `['shifts', ym]`, refetches every 10min
 3. **Worker Transform**: MetricAid API response → `MonthShifts` type
 4. **Grid Rendering**: Virtualized rows (TanStack Virtual) with sticky header/column
+5. **R2 Config**: Dynamic configuration stored in Cloudflare R2, fetched by Worker with 5min cache
 
 ### Type Contract: `MonthShifts`
 ```typescript
@@ -75,9 +76,10 @@ npm run dev
 **Critical**: `rows` is pre-computed for O(1) lookup. `rows[i][d]` gives array of shift codes for person `i` on day `d+1` (zero-indexed array, 1-indexed days). Each cell can contain multiple shifts (e.g., morning + afternoon) which are displayed stacked vertically in the grid.
 
 ### Worker Responsibilities
-- **Security**: Inject `API_TOKEN` from env (never exposed to browser)
+- **Security**: Inject `API_TOKEN` from env (never exposed to browser), serve all configs from private R2 storage
 - **Validation**: Check `ym` format (YYYY-MM), year 2000-2100, month 01-12
 - **Transform**: Upstream shifts → normalized `rows` matrix + `people` array
+- **R2 Config**: Fetch all configuration files from R2 with 5min cache (shift display, styling, colors, doctor names, overrides)
 - **Caching**: Set `Cache-Control: public, max-age=300` (5 minutes)
 - **Retry**: Up to 2 retries on 5xx errors
 - **CORS**: `Access-Control-Allow-Origin: *` for public data
@@ -141,9 +143,16 @@ NEXT_PUBLIC_API_URL=http://localhost:8787/api  # Dev: point to local worker
 ### Worker (wrangler.toml + secrets)
 ```toml
 # wrangler.toml (public)
+[[r2_buckets]]
+binding = "CONFIG_BUCKET"
+bucket_name = "schedule-viewer-config"
+preview_bucket_name = "schedule-viewer-config-preview"
+
+[vars]
 API_BASE_URL = "https://api.metricaid.com/api/v1"
 API_TIMEOUT_MS = "8000"
 CACHE_TTL_SECONDS = "300"
+CONFIG_CACHE_TTL_SECONDS = "300"  # R2 config cache (5 minutes)
 
 # Secret (via CLI)
 wrangler secret put API_TOKEN  # Never commit this
@@ -151,10 +160,53 @@ wrangler secret put API_TOKEN  # Never commit this
 
 ## Common Development Patterns
 
-### Adding a New Shift Code
+### Managing R2 Configuration (RECOMMENDED)
+Configs are now stored in Cloudflare R2 and can be updated without rebuilding/redeploying:
+
+**1. Create R2 Buckets** (one-time setup):
+```bash
+wrangler r2 bucket create schedule-viewer-config
+wrangler r2 bucket create schedule-viewer-config-preview
+```
+
+**2. Edit Config Files Locally**:
+- `src/config/shift-display.config.json` - Shift code aliases and labels
+- `src/config/shift-styling.config.json` - Conditional styling rules
+- `src/config/shift-colors.json` - Color definitions for shift codes
+- `src/config/doctor-names.json` - Doctor name mappings (API IDs to real names)
+- `src/config/full-name-overrides.json` - List of doctors to show full names for
+
+**3. Upload to R2**:
+```bash
+# Upload to production
+./scripts/upload-config-to-r2.sh
+
+# Upload to preview (for testing)
+./scripts/upload-config-to-r2.sh --preview
+```
+
+**4. Config Takes Effect**:
+- Worker caches configs for 5 minutes (CONFIG_CACHE_TTL_SECONDS)
+- Frontend caches configs for 5 minutes via React Query
+- Changes propagate automatically after cache expires
+
+**Config Endpoints**:
+- `GET /api/config/shift-display` - Returns shift display config
+- `GET /api/config/shift-styling` - Returns shift styling config
+- `GET /api/config/shift-colors` - Returns shift color definitions
+- `GET /api/config/doctor-names` - Returns doctor name mappings
+- `GET /api/config/full-name-overrides` - Returns full name override list
+
+**Fallback Behavior**:
+- If R2 fetch fails, Worker uses empty defaults ({} for objects, [] for arrays)
+- Frontend gracefully handles missing configs with built-in defaults
+
+### Adding a New Shift Code (Legacy Method)
 1. Update `NEXT_PUBLIC_SHIFT_CODE_DICT` in `.env.local`
 2. (Optional) Add predefined color in `src/lib/colors.ts` if needed
 3. Worker automatically includes any code from upstream API
+
+**Note**: Consider using R2 config instead (see above) for runtime updates.
 
 ### Modifying Grid Behavior
 - **Component**: `src/app/_components/ScheduleGrid.tsx`
@@ -202,13 +254,29 @@ npx wrangler pages deploy out --project-name schedule-viewer
 **Critical**: Deploy `out/` directory (static export)
 
 ### Worker (Cloudflare)
-1. `cd worker && wrangler deploy`
-2. Set secrets:
+1. **Create R2 Buckets** (one-time):
+   ```bash
+   wrangler r2 bucket create schedule-viewer-config
+   wrangler r2 bucket create schedule-viewer-config-preview
+   ```
+
+2. **Upload Initial Config**:
+   ```bash
+   ./scripts/upload-config-to-r2.sh
+   ```
+
+3. **Deploy Worker**:
+   ```bash
+   cd worker && wrangler deploy
+   ```
+
+4. **Set Secrets**:
    ```bash
    wrangler secret put API_TOKEN
    wrangler secret put ACCESS_PASSWORD
    ```
-3. Frontend env: `NEXT_PUBLIC_API_URL=https://schedule-viewer-worker.your-account.workers.dev/api`
+
+5. **Update Frontend Env**: `NEXT_PUBLIC_API_URL=https://schedule-viewer-worker.your-account.workers.dev/api`
 
 ## Troubleshooting
 
@@ -237,14 +305,23 @@ npx wrangler pages deploy out --project-name schedule-viewer
 - `src/app/_components/ScheduleGrid.tsx` - Grid rendering & virtualization
 - `src/lib/api-client.ts` - React Query hooks & API calls
 - `worker/src/lib.rs` - Worker logic & data transformation
+- `worker/src/config.rs` - R2 config fetching & caching
+- `src/lib/config-client.ts` - Frontend config fetching utilities
 - `src/lib/types.ts` - TypeScript contracts (MonthShifts)
 
 **Configuration**:
+- `src/config/shift-display.config.json` - Shift code aliases/labels (uploaded to R2)
+- `src/config/shift-styling.config.json` - Conditional styling rules (uploaded to R2)
 - `next.config.ts` - Next.js build settings
-- `worker/wrangler.toml` - Worker deployment config
+- `worker/wrangler.toml` - Worker deployment config + R2 bindings
 - `tailwind.config.ts` - Tailwind CSS setup
+
+**Scripts**:
+- `scripts/upload-config-to-r2.sh` - Upload configs to R2 buckets
+- `scripts/README.md` - Configuration management guide
 
 **Documentation**:
 - `docs/ARCHITECTURE.md` - Architecture decisions & rationale
 - `docs/project-instructions.md` - Original requirements
 - `README.md` - Setup & deployment guide
+- `CLAUDE.md` - This file

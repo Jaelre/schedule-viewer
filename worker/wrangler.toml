@@ -5,10 +5,48 @@ compatibility_date = "2024-01-01"
 [build]
 command = "cargo install -q worker-build && worker-build --release"
 
+# Production environment (default when no --env flag)
+# URL: https://schedule-viewer-worker.*.workers.dev
+# Deploy: wrangler deploy
+[[r2_buckets]]
+binding = "CONFIG_BUCKET"
+bucket_name = "schedule-viewer-config"
+
+[[r2_buckets]]
+binding = "TELEMETRY_BUCKET"
+bucket_name = "schedule-viewer-telemetry"
+
 [vars]
 API_BASE_URL = "https://api.metricaid.com"
 API_TIMEOUT_MS = "8000"
 CACHE_TTL_SECONDS = "900"
+CONFIG_CACHE_TTL_SECONDS = "300"
+TELEMETRY_LOG_ONLY = "false"
 
-# API_TOKEN should be set as a secret via:
-# wrangler secret put API_TOKEN
+# Preview environment (online dev/staging)
+# URL: https://preview.schedule-viewer-worker.*.workers.dev
+# Deploy: wrangler deploy --env preview
+# Local dev: wrangler dev (uses preview buckets + .dev.vars)
+[env.preview]
+
+[[env.preview.r2_buckets]]
+binding = "CONFIG_BUCKET"
+bucket_name = "schedule-viewer-config-preview"
+
+[[env.preview.r2_buckets]]
+binding = "TELEMETRY_BUCKET"
+bucket_name = "schedule-viewer-telemetry-preview"
+
+[env.preview.vars]
+API_BASE_URL = "https://api.metricaid.com"
+API_TIMEOUT_MS = "8000"
+CACHE_TTL_SECONDS = "300"
+CONFIG_CACHE_TTL_SECONDS = "300"
+TELEMETRY_LOG_ONLY = "false"
+
+# Secrets configuration:
+# - Local dev: .dev.vars (encrypted with git-crypt)
+# - Preview: wrangler secret put API_TOKEN --env preview
+#            wrangler secret put ACCESS_PASSWORD --env preview
+# - Production: wrangler secret put API_TOKEN
+#               wrangler secret put ACCESS_PASSWORD

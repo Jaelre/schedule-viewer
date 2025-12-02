@@ -5,6 +5,7 @@ import { getDaysInMonth, isItalianHoliday, isWeekend } from '@/lib/date'
 import { getDoctorDisplayName } from '@/lib/doctor-names'
 import { resolveShiftLabel } from '@/lib/shift-labels'
 import type { MonthShifts } from '@/lib/types'
+import { useRuntimeConfig } from '@/lib/config/runtime-config'
 
 interface PrintableScheduleProps {
   month: MonthShifts
@@ -37,6 +38,7 @@ function formatShiftCell(codes: string[] | null | undefined): string {
 
 export const PrintableSchedule = forwardRef<HTMLDivElement, PrintableScheduleProps>(
   ({ month }, ref) => {
+    const { config } = useRuntimeConfig()
     const daysInMonth = getDaysInMonth(month.ym)
     const dayNumbers = useMemo(() => Array.from({ length: daysInMonth }, (_, index) => index + 1), [daysInMonth])
     const dayColumnWidth = useMemo(() => {
@@ -93,7 +95,7 @@ export const PrintableSchedule = forwardRef<HTMLDivElement, PrintableSchedulePro
             </thead>
             <tbody>
               {month.people.map((person, personIndex) => {
-                const display = getDoctorDisplayName(person.id, person.name)
+                const display = getDoctorDisplayName(config.doctorNames, person.id, person.name)
                 const personRow = month.rows[personIndex] || []
 
                 return (

@@ -60,6 +60,14 @@ Thumbs.db
 .api-samples/
 
 # Sensitive information and private files
+docs/private/
+# NOTE: Config files are now in src/config/ and tracked/encrypted via git-crypt (see .gitattributes)
+# They are uploaded to R2 storage and served via Worker API
+*.xlsx
+*.xls
+*.csv
+**/sensitive/
+**/confidential/
 # NOTE: Sensitive files are now tracked and encrypted via git-crypt (see .gitattributes)
 # Only truly generated/temporary files should be ignored here
 claudedocs/
