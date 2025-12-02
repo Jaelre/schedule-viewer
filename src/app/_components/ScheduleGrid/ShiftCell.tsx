@@ -35,7 +35,7 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
         >
           {codes.map((code, idx) => {
             const displayCode = getShiftDisplayCode(code)
-            const colors = getShiftColor(code)
+            const colors = getShiftColor(displayCode)
             const underlineConfig = config.shiftStyling.conditionalUnderline
             // Check if conditional underline should be applied
             const shouldUnderline =
