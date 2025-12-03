@@ -108,6 +108,7 @@ class InternalTelemetryClient implements TelemetryClient {
       const beaconBody = JSON.stringify({
         events,
         authToken: token ?? undefined,
+        flush: true, // Force immediate flush in serverless environment
       })
       const beaconSent = navigator.sendBeacon(ENDPOINT, beaconBody)
       if (beaconSent) {
@@ -121,7 +122,10 @@ class InternalTelemetryClient implements TelemetryClient {
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    const fetchBody = JSON.stringify({ events })
+    const fetchBody = JSON.stringify({
+      events,
+      flush: true, // Force immediate flush in serverless environment
+    })
 
     fetch(ENDPOINT, {
       method: 'POST',
