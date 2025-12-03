@@ -486,14 +486,113 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
 
     // Perform async flush if needed
     if let TelemetryIngestResult::Flush(events) = ingest_result {
-        let log_only = ctx
-            .var("TELEMETRY_LOG_ONLY")
+        // PRIMARY: Insert into Supabase PostgreSQL
+        let supabase_url = ctx.secret("SUPABASE_URL").ok();
+        let supabase_key = ctx.secret("SUPABASE_SERVICE_KEY").ok();
+        let table_name = ctx
+            .var("SUPABASE_TELEMETRY_TABLE")
+            .map(|v| v.to_string())
+            .unwrap_or_else(|_| "telemetry_events".to_string());
+
+        if let (Some(url), Some(key)) = (supabase_url, supabase_key) {
+            let url_str = url.to_string();
+            let key_str = key.to_string();
+
+            // Build payload for Supabase REST API
+            let supabase_payload: Vec<serde_json::Value> = events
+                .iter()
+                .map(|event| {
+                    serde_json::json!({
+                        "timestamp": event.fields.get("timestamp").and_then(|v| v.as_str()),
+                        "feature": event.fields.get("feature").and_then(|v| v.as_str()),
+                        "action": event.fields.get("action").and_then(|v| v.as_str()),
+                        "value": event.fields.get("value").map(|v| v.to_string()),
+                        "ym": event.fields.get("ym").and_then(|v| v.as_str()),
+                        "url": event.fields.get("url").and_then(|v| v.as_str()),
+                        "user_agent": event.metadata.user_agent.as_deref(),
+                        "ip_address": event.metadata.ip_address.as_deref(),
+                        "region": event.metadata.region.as_deref(),
+                        "viewport_width": event.fields.get("viewport")
+                            .and_then(|v| v.get("width"))
+                            .and_then(|v| v.as_i64()),
+                        "viewport_height": event.fields.get("viewport")
+                            .and_then(|v| v.get("height"))
+                            .and_then(|v| v.as_i64()),
+                        "language": event.fields.get("language").and_then(|v| v.as_str()),
+                        "timezone": event.fields.get("timezone").and_then(|v| v.as_str()),
+                        "referrer": event.fields.get("referrer").and_then(|v| v.as_str()),
+                        "stream": event.metadata.stream.as_deref(),
+                    })
+                })
+                .collect();
+
+            // Call Supabase REST API
+            let supabase_insert_url = format!("{}/rest/v1/{}", url_str, table_name);
+
+            // Serialize payload to JSON string
+            if let Ok(payload_json) = serde_json::to_string(&supabase_payload) {
+                let headers = Headers::new();
+                if let (Ok(()), Ok(()), Ok(()), Ok(())) = (
+                    headers.set("apikey", &key_str),
+                    headers.set("Authorization", &format!("Bearer {}", key_str)),
+                    headers.set("Content-Type", "application/json"),
+                    headers.set("Prefer", "return=minimal"),
+                ) {
+                    let mut request_init = RequestInit::new();
+                    request_init
+                        .with_method(Method::Post)
+                        .with_headers(headers)
+                        .with_body(Some(payload_json.into()));
+
+                    if let Ok(supabase_req) = Request::new_with_init(
+                        &supabase_insert_url,
+                        &request_init,
+                    ) {
+                        match Fetch::Request(supabase_req).send().await {
+                            Ok(mut response) => {
+                                let status = response.status_code();
+                                if status < 200 || status >= 300 {
+                                    let error_text = response.text().await.unwrap_or_default();
+                                    console_error!(
+                                        "Supabase insert failed: {} - {}",
+                                        status,
+                                        error_text
+                                    );
+                                } else {
+                                    console_log!(
+                                        "Successfully inserted {} events to Supabase",
+                                        events.len()
+                                    );
+                                }
+                            }
+                            Err(e) => {
+                                console_error!("Supabase request failed: {:?}", e);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            console_log!("Supabase credentials not configured, skipping Supabase insert");
+        }
+
+        // SECONDARY: Archive to R2 (existing logic)
+        let r2_enabled = ctx
+            .var("TELEMETRY_ARCHIVE_TO_R2")
             .ok()
             .and_then(|v| v.to_string().parse::<bool>().ok())
-            .unwrap_or(false);
+            .unwrap_or(true);
 
-        let bucket = ctx.bucket("TELEMETRY_BUCKET").ok();
-        let _ = flush_events_to_storage(&events, bucket.as_ref(), log_only).await;
+        if r2_enabled {
+            let log_only = ctx
+                .var("TELEMETRY_LOG_ONLY")
+                .ok()
+                .and_then(|v| v.to_string().parse::<bool>().ok())
+                .unwrap_or(false);
+
+            let bucket = ctx.bucket("TELEMETRY_BUCKET").ok();
+            let _ = flush_events_to_storage(&events, bucket.as_ref(), log_only).await;
+        }
     }
 
     let headers = build_cors_headers(&origin)?;

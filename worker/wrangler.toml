@@ -22,6 +22,8 @@ API_TIMEOUT_MS = "8000"
 CACHE_TTL_SECONDS = "900"
 CONFIG_CACHE_TTL_SECONDS = "300"
 TELEMETRY_LOG_ONLY = "false"
+TELEMETRY_ARCHIVE_TO_R2 = "true"
+SUPABASE_TELEMETRY_TABLE = "telemetry_events"
 
 # Preview environment (online dev/staging)
 # URL: https://preview.schedule-viewer-worker.*.workers.dev
@@ -43,10 +45,16 @@ API_TIMEOUT_MS = "8000"
 CACHE_TTL_SECONDS = "300"
 CONFIG_CACHE_TTL_SECONDS = "300"
 TELEMETRY_LOG_ONLY = "false"
+TELEMETRY_ARCHIVE_TO_R2 = "true"
+SUPABASE_TELEMETRY_TABLE = "telemetry_events"
 
 # Secrets configuration:
 # - Local dev: .dev.vars (encrypted with git-crypt)
 # - Preview: wrangler secret put API_TOKEN --env preview
 #            wrangler secret put ACCESS_PASSWORD --env preview
+#            wrangler secret put SUPABASE_URL --env preview
+#            wrangler secret put SUPABASE_SERVICE_KEY --env preview
 # - Production: wrangler secret put API_TOKEN
 #               wrangler secret put ACCESS_PASSWORD
+#               wrangler secret put SUPABASE_URL
+#               wrangler secret put SUPABASE_SERVICE_KEY
