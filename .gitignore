@@ -68,6 +68,7 @@ Thumbs.db
 *.csv
 **/sensitive/
 **/confidential/
+docs/private/supabase
 # NOTE: Sensitive files are now tracked and encrypted via git-crypt (see .gitattributes)
 # Only truly generated/temporary files should be ignored here
 claudedocs/
