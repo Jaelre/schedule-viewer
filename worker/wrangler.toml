@@ -3,7 +3,18 @@ main = "build/worker/shim.mjs"
 compatibility_date = "2024-01-01"
 
 [build]
-command = "cargo install -q worker-build && worker-build --release"
+command = "$HOME/.cargo/bin/worker-build --release"
+
+# Production environment (default when no --env flag)
+# URL: https://schedule-viewer-worker.*.workers.dev
+# Deploy: wrangler deploy
+[[r2_buckets]]
+binding = "CONFIG_BUCKET"
+bucket_name = "schedule-viewer-config"
+
+[[r2_buckets]]
+binding = "TELEMETRY_BUCKET"
+bucket_name = "schedule-viewer-telemetry"
 
 # Production environment (default when no --env flag)
 # URL: https://schedule-viewer-worker.*.workers.dev

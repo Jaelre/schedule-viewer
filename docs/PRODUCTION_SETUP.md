@@ -79,17 +79,18 @@ curl https://your-worker-url.workers.dev/api/config/shift-styling
 
 ## Step 6: Configure Frontend Environment
 
-**IMPORTANT**: The production setup uses a same-origin architecture to prevent script blockers from blocking telemetry. The frontend uses `/api` (relative path) and Pages Functions proxy requests to the Worker.
-
-Environment variables are already configured in `.env.production`:
+Create production environment variables for the frontend build:
 
 ```bash
-NEXT_PUBLIC_API_URL=/api  # Relative path - proxied via Pages Functions
+# In project root, create .env.production or configure in Cloudflare Pages UI
+cat > .env.production << 'EOF'
+NEXT_PUBLIC_API_URL=https://your-worker-url.workers.dev/api
 NEXT_PUBLIC_DEFAULT_UNIT_NAME="Emergency Department"
 NEXT_PUBLIC_SHIFT_CODE_DICT='{"D":{"label":"Day"},"N":{"label":"Night"},"O":{"label":"Off"}}'
+EOF
 ```
 
-These will be automatically picked up during the build.
+Update `NEXT_PUBLIC_API_URL` with your actual Worker URL from Step 3.
 
 ## Step 7: Deploy Frontend to Cloudflare Pages
 
@@ -117,29 +118,7 @@ npx wrangler pages deploy out --project-name schedule-viewer
 For manual deploys, set environment variables in Cloudflare dashboard:
 Settings > Environment variables
 
-## Step 8: Service Binding Configuration (Automatic)
-
-**This step is now automated via `wrangler.toml`.**
-
-The service binding configuration is already defined in `wrangler.toml` at the project root:
-
-```toml
-[[services]]
-binding = "WORKER"
-service = "schedule-viewer-worker"
-```
-
-This allows the Pages Function at `functions/api/[[path]].ts` to proxy `/api/*` requests to the Worker.
-
-**When you deploy via GitHub integration or `wrangler pages deploy`, this binding is automatically applied.**
-
-**Why this matters**: This makes all API requests same-origin (from the Pages domain), preventing script blockers from flagging telemetry as cross-site tracking.
-
-**Manual verification** (optional):
-- After deployment, go to Pages project → Settings → Functions → Service bindings
-- You should see `WORKER = schedule-viewer-worker` listed
-
-## Step 9: Verify Deployment
+## Step 8: Verify Deployment
 
 1. Visit your Pages URL (e.g., `https://schedule-viewer.pages.dev`)
 2. Test authentication gate:
@@ -152,7 +131,7 @@ This allows the Pages Function at `functions/api/[[path]].ts` to proxy `/api/*` 
    - Navigate to `/pdf` route
    - Generate and download a PDF
 
-## Step 10: Configure Custom Domain (Optional)
+## Step 9: Configure Custom Domain (Optional)
 
 In Cloudflare Pages dashboard:
 1. Go to your project > Custom domains
@@ -198,17 +177,8 @@ wrangler secret put API_TOKEN
 
 ### Frontend Shows Empty Grid
 - Check browser console for CORS or network errors
-- Verify `NEXT_PUBLIC_API_URL` is set to `/api` (relative path)
-- Verify Worker service binding is configured in Pages Settings > Functions
+- Verify `NEXT_PUBLIC_API_URL` points to correct Worker URL
 - Test Worker endpoint directly with curl
-
-### Telemetry Being Blocked by Script Blockers
-If telemetry is blocked despite same-origin setup:
-- Verify `NEXT_PUBLIC_API_URL=/api` (not absolute Worker URL)
-- Check Pages Settings > Functions > Service bindings has `WORKER` binding
-- Inspect browser console for 503 errors (indicates missing service binding)
-- Test `/api/telemetry` endpoint responds (should return 401 without auth)
-- Note: Some aggressive blockers may still block based on path/pattern - this is expected
 
 ### R2 Config Not Loading
 ```bash

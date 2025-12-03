@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { trackClientEvent } from '@/lib/telemetry'
 import type { Density } from './ScheduleGrid/types'
 import { useTelemetry } from '@/app/providers'
 
