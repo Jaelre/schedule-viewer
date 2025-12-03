@@ -506,7 +506,10 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
                         "timestamp": event.fields.get("timestamp").and_then(|v| v.as_str()),
                         "feature": event.fields.get("feature").and_then(|v| v.as_str()),
                         "action": event.fields.get("action").and_then(|v| v.as_str()),
-                        "value": event.fields.get("value").map(|v| v.to_string()),
+                        "value": event.fields.get("value").map(|v| match v {
+                            serde_json::Value::String(s) => s.clone(),
+                            _ => v.to_string(),
+                        }),
                         "ym": event.fields.get("ym").and_then(|v| v.as_str()),
                         "url": event.fields.get("url").and_then(|v| v.as_str()),
                         "user_agent": event.metadata.user_agent.as_deref(),
