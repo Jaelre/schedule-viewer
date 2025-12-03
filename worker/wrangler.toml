@@ -16,6 +16,17 @@ bucket_name = "schedule-viewer-config"
 binding = "TELEMETRY_BUCKET"
 bucket_name = "schedule-viewer-telemetry"
 
+# Production environment (default when no --env flag)
+# URL: https://schedule-viewer-worker.*.workers.dev
+# Deploy: wrangler deploy
+[[r2_buckets]]
+binding = "CONFIG_BUCKET"
+bucket_name = "schedule-viewer-config"
+
+[[r2_buckets]]
+binding = "TELEMETRY_BUCKET"
+bucket_name = "schedule-viewer-telemetry"
+
 [vars]
 API_BASE_URL = "https://api.metricaid.com"
 API_TIMEOUT_MS = "8000"
