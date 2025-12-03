@@ -42,11 +42,21 @@ The `[[path]]` syntax creates a catch-all route matching `/api/*` patterns.
 
 ### 2. Service Binding Configuration
 
-In Cloudflare Pages dashboard:
-- **Settings** > **Functions** > **Service bindings**
-- Add binding: `WORKER = schedule-viewer-worker`
+The service binding is configured via `wrangler.toml` at the project root:
+
+```toml
+[[services]]
+binding = "WORKER"
+service = "schedule-viewer-worker"
+```
+
+This configuration is automatically applied when deploying via:
+- GitHub integration (Cloudflare reads `wrangler.toml` from repo)
+- `wrangler pages deploy` command
 
 This gives the Pages Function access to call the Worker as an internal service (not via public HTTP).
+
+**Verification**: After deployment, check Pages Settings > Functions > Service bindings to confirm `WORKER` binding exists.
 
 ### 3. Relative API URLs
 
@@ -148,10 +158,12 @@ If you previously deployed with separate domains:
 
 ## Files Modified
 
-- `public/_routes.json` - Pages routing config
+- `wrangler.toml` - Service binding configuration (NEW)
+- `public/_routes.json` - Pages routing config (NEW)
 - `functions/api/[[path]].ts` - Proxy function (NEW)
 - `.env.production` - API URL changed to relative path
-- `docs/PRODUCTION_SETUP.md` - Added Step 8 for service binding
+- `docs/PRODUCTION_SETUP.md` - Updated Step 8 for service binding
+- `docs/SAME_ORIGIN_DEPLOYMENT.md` - Architecture documentation (NEW)
 
 ## References
 

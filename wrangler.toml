@@ -1,0 +1,17 @@
+# Cloudflare Pages Configuration
+# This configures service bindings for Pages Functions
+
+name = "schedule-viewer"
+compatibility_date = "2024-01-01"
+
+# Service binding: allows Pages Functions to call the Worker
+# The Pages Function at functions/api/[[path]].ts uses env.WORKER to proxy requests
+[[services]]
+binding = "WORKER"
+service = "schedule-viewer-worker"
+
+# For preview deployments, you can optionally specify environment
+# [[env.preview.services]]
+# binding = "WORKER"
+# service = "schedule-viewer-worker"
+# environment = "preview"

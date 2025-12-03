@@ -117,22 +117,27 @@ npx wrangler pages deploy out --project-name schedule-viewer
 For manual deploys, set environment variables in Cloudflare dashboard:
 Settings > Environment variables
 
-## Step 8: Configure Service Binding (CRITICAL)
+## Step 8: Service Binding Configuration (Automatic)
 
-**This step is essential for same-origin deployment and preventing telemetry blocking.**
+**This step is now automated via `wrangler.toml`.**
 
-The Pages Function needs to be bound to the Worker to proxy `/api/*` requests:
+The service binding configuration is already defined in `wrangler.toml` at the project root:
 
-1. In Cloudflare dashboard, go to your Pages project
-2. Navigate to **Settings** > **Functions**
-3. Scroll to **Service bindings**
-4. Click **Add binding**:
-   - Variable name: `WORKER`
-   - Service: `schedule-viewer-worker` (your Worker name from Step 3)
-   - Environment: `production`
-5. Click **Save**
+```toml
+[[services]]
+binding = "WORKER"
+service = "schedule-viewer-worker"
+```
+
+This allows the Pages Function at `functions/api/[[path]].ts` to proxy `/api/*` requests to the Worker.
+
+**When you deploy via GitHub integration or `wrangler pages deploy`, this binding is automatically applied.**
 
 **Why this matters**: This makes all API requests same-origin (from the Pages domain), preventing script blockers from flagging telemetry as cross-site tracking.
+
+**Manual verification** (optional):
+- After deployment, go to Pages project → Settings → Functions → Service bindings
+- You should see `WORKER = schedule-viewer-worker` listed
 
 ## Step 9: Verify Deployment
 
