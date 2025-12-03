@@ -12,10 +12,9 @@ compatibility_date = "2024-01-01"
 binding = "WORKER"
 service = "schedule-viewer-worker"
 
-# Preview environment - binds to preview Worker environment
+# Preview environment - binds to separate preview Worker service
 # This ensures preview builds use preview R2 buckets and configs
 [env.preview]
 [[env.preview.services]]
 binding = "WORKER"
-service = "schedule-viewer-worker"
-environment = "preview"
+service = "schedule-viewer-worker-preview"
