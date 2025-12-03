@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getCurrentYM, isValidYM } from '@/lib/date'
 import { useMonthShifts } from '@/lib/api-client'
@@ -31,6 +31,12 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
 
   const { data, isLoading, error, refetch } = useMonthShifts(currentYM)
   const { track } = useTelemetry()
+
+  // Track page view on mount
+  useEffect(() => {
+    track({ feature: 'schedule_app', action: 'page_view', value: currentYM })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on initial page load
 
   const handleToggleView = useCallback(() => {
     setViewMode((previous) => {
