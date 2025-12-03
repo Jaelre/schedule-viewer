@@ -3,6 +3,7 @@
 
 name = "schedule-viewer"
 compatibility_date = "2024-01-01"
+pages_build_output_dir = "out"
 
 # Service binding: allows Pages Functions to call the Worker
 # The Pages Function at functions/api/[[path]].ts uses env.WORKER to proxy requests
