@@ -144,6 +144,12 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
   - `API_TOKEN`: MetricAid API authentication
   - `ACCESS_PASSWORD`: Password gate authentication (set via `wrangler secret put ACCESS_PASSWORD`)
 
+## Favicon cache busting
+
+- Favicons and PWA icons include a version query string (currently `?v=2`) to force browsers to fetch new assets when icons change.
+- When updating any files under `public/icons/`, bump the version in both `src/app/layout.tsx` and `public/icons/site.webmanifest`.
+- See [docs/favicon-cache-busting.md](docs/favicon-cache-busting.md) for the step-by-step process.
+
 ## Telemetry
 
 - **Client helper**: A lightweight telemetry client queues structured events in memory and sends them to the Worker endpoint exposed via `NEXT_PUBLIC_TELEMETRY_ENDPOINT`. It wraps `navigator.sendBeacon` when available, falling back to authenticated `fetch` requests when the page is in the foreground.
