@@ -178,11 +178,14 @@ wrangler r2 bucket create schedule-viewer-config-preview
 
 **3. Upload to R2**:
 ```bash
-# Upload to production
+# Upload to production (remote Cloudflare R2 - default)
 ./scripts/upload-config-to-r2.sh
 
-# Upload to preview (for testing)
+# Upload to preview bucket
 ./scripts/upload-config-to-r2.sh --preview
+
+# Upload to local R2 (development only)
+./scripts/upload-config-to-r2.sh --local
 ```
 
 **4. Config Takes Effect**:

@@ -1,6 +1,10 @@
 #!/bin/bash
 # Script to upload config files to Cloudflare R2 bucket
-# Usage: ./scripts/upload-config-to-r2.sh [--preview] [--remote]
+# Usage: ./scripts/upload-config-to-r2.sh [--preview] [--local]
+#
+# By default, uploads to REMOTE Cloudflare R2 (production).
+# Use --preview to upload to preview bucket
+# Use --local to upload to local R2 (for development only)
 
 set -e
 
@@ -8,33 +12,43 @@ set -e
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Parse arguments
+# Parse arguments - default to REMOTE
 BUCKET_NAME="schedule-viewer-config"
-WRANGLER_FLAGS=""
+USE_REMOTE=true
 
 for arg in "$@"; do
   case $arg in
     --preview)
       BUCKET_NAME="schedule-viewer-config-preview"
       ;;
-    --remote)
-      WRANGLER_FLAGS="--remote"
+    --local)
+      USE_REMOTE=false
       ;;
   esac
 done
 
-# Display bucket selection
-if [ "$BUCKET_NAME" == "schedule-viewer-config-preview" ]; then
-  echo -e "${YELLOW}Using PREVIEW bucket: ${BUCKET_NAME}${NC}"
-else
-  echo -e "${GREEN}Using PRODUCTION bucket: ${BUCKET_NAME}${NC}"
+# Build wrangler flags
+WRANGLER_FLAGS=""
+if [ "$USE_REMOTE" = true ]; then
+  WRANGLER_FLAGS="--remote"
 fi
 
-# Display remote flag status
-if [ -n "$WRANGLER_FLAGS" ]; then
-  echo -e "${YELLOW}Using REMOTE Cloudflare R2 (not local)${NC}"
+# Display bucket selection
+echo ""
+if [ "$BUCKET_NAME" == "schedule-viewer-config-preview" ]; then
+  echo -e "${YELLOW}📦 Target bucket: ${BUCKET_NAME}${NC}"
+else
+  echo -e "${GREEN}📦 Target bucket: ${BUCKET_NAME}${NC}"
+fi
+
+# Display location
+if [ "$USE_REMOTE" = true ]; then
+  echo -e "${BLUE}☁️  Location: REMOTE Cloudflare R2${NC}"
+else
+  echo -e "${YELLOW}💻 Location: LOCAL R2 (development only)${NC}"
 fi
 
 # Config files to upload
@@ -75,10 +89,10 @@ for file in "${FILES[@]}"; do
 done
 
 echo ""
-echo -e "${GREEN}All config files uploaded successfully!${NC}"
+echo -e "${GREEN}✅ All config files uploaded successfully!${NC}"
 echo ""
-echo "To verify, run:"
-if [ -n "$WRANGLER_FLAGS" ]; then
+echo -e "${BLUE}To verify, run:${NC}"
+if [ "$USE_REMOTE" = true ]; then
   echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-display.config.json --remote"
   echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-styling.config.json --remote"
   echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-colors.json --remote"
