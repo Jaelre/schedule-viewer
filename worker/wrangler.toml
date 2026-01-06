@@ -16,6 +16,10 @@ bucket_name = "schedule-viewer-config"
 binding = "TELEMETRY_BUCKET"
 bucket_name = "schedule-viewer-telemetry"
 
+[[r2_buckets]]
+binding = "FEEDBACK_BUCKET"
+bucket_name = "schedule-viewer-feedback"
+
 [vars]
 API_BASE_URL = "https://api.metricaid.com"
 API_TIMEOUT_MS = "8000"
@@ -24,6 +28,8 @@ CONFIG_CACHE_TTL_SECONDS = "6000"
 TELEMETRY_LOG_ONLY = "false"
 TELEMETRY_ARCHIVE_TO_R2 = "true"
 SUPABASE_TELEMETRY_TABLE = "telemetry_events"
+FEEDBACK_ARCHIVE_TO_R2 = "true"
+SUPABASE_FEEDBACK_TABLE = "feedback_submissions"
 
 # Preview environment (online dev/staging)
 # URL: https://preview.schedule-viewer-worker.*.workers.dev
@@ -39,6 +45,10 @@ bucket_name = "schedule-viewer-config-preview"
 binding = "TELEMETRY_BUCKET"
 bucket_name = "schedule-viewer-telemetry-preview"
 
+[[env.preview.r2_buckets]]
+binding = "FEEDBACK_BUCKET"
+bucket_name = "schedule-viewer-feedback-preview"
+
 [env.preview.vars]
 API_BASE_URL = "https://api.metricaid.com"
 API_TIMEOUT_MS = "8000"
@@ -47,6 +57,8 @@ CONFIG_CACHE_TTL_SECONDS = "300"
 TELEMETRY_LOG_ONLY = "false"
 TELEMETRY_ARCHIVE_TO_R2 = "true"
 SUPABASE_TELEMETRY_TABLE = "telemetry_events"
+FEEDBACK_ARCHIVE_TO_R2 = "true"
+SUPABASE_FEEDBACK_TABLE = "feedback_submissions"
 
 # Secrets configuration:
 # - Local dev: .dev.vars (encrypted with git-crypt)

@@ -56,3 +56,46 @@ export function useMonthShifts(ym: string): UseQueryResult<MonthShifts, Error> {
     retry: 2, // Retry failed requests twice
   })
 }
+
+/**
+ * Submit user feedback
+ */
+interface FeedbackPayload {
+  feedback_text: string
+  signature?: string
+  metadata?: Record<string, unknown>
+}
+
+interface FeedbackResponse {
+  success: boolean
+  error?: string
+}
+
+export async function submitFeedback(payload: FeedbackPayload): Promise<void> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('schedule_viewer_token') : null
+
+  const headers: HeadersInit = { 'Content-Type': 'application/json' }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_BASE_URL}/feedback`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    const errorData: FeedbackResponse = await response.json().catch(() => ({
+      success: false,
+      error: 'Network error',
+    }))
+    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+  }
+
+  const data: FeedbackResponse = await response.json()
+
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to submit feedback')
+  }
+}

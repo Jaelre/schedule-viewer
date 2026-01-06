@@ -11,6 +11,7 @@ import { DensityToggle, type Density } from './DensityToggle'
 import { ScheduleGrid } from './ScheduleGrid'
 import type { ViewMode } from './ScheduleGrid/types'
 import { LegendModal } from './LegendModal'
+import { FeedbackButton } from './FeedbackButton'
 import { useTelemetry } from '@/app/providers'
 
 interface ScheduleAppProps {
@@ -99,6 +100,7 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
             >
               {viewMode === 'people' ? 'Vista turni' : 'Vista medici'}
             </button>
+            <FeedbackButton />
           </div>
         </div>
 

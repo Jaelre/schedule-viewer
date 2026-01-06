@@ -169,6 +169,23 @@ struct AccessResponse {
     token: Option<String>,
 }
 
+// Feedback submission types
+#[derive(Deserialize)]
+struct FeedbackRequest {
+    feedback_text: String,
+    #[serde(default)]
+    signature: Option<String>,
+    #[serde(default)]
+    metadata: JsonMap,
+}
+
+#[derive(Serialize)]
+struct FeedbackResponse {
+    success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
 #[derive(Serialize)]
 struct ErrorDetails {
     code: String,
@@ -259,6 +276,9 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         })
         .post_async("/api/telemetry", |req, ctx| async move {
             handle_telemetry(req, ctx).await
+        })
+        .post_async("/api/feedback", |req, ctx| async move {
+            handle_feedback(req, ctx).await
         })
         .run(req, env)
         .await
@@ -602,6 +622,267 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
     Ok(Response::empty()?
         .with_headers(headers)
         .with_status(status_code))
+}
+
+async fn handle_feedback(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let origin = req
+        .headers()
+        .get("Origin")?
+        .unwrap_or_else(|| "*".to_string());
+
+    // Check authentication
+    if !has_access_token(&req, &ctx) {
+        return error_response_with_origin(
+            "UNAUTHORIZED",
+            "Missing or invalid access token",
+            401,
+            &origin,
+        );
+    }
+
+    // Extract metadata from request
+    let user_agent = req
+        .headers()
+        .get("User-Agent")?
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty());
+    let ip_address = req
+        .headers()
+        .get("CF-Connecting-IP")?
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty());
+    let region = req
+        .cf()
+        .and_then(|cf| cf.region())
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty());
+
+    // Parse request body
+    let feedback_req: FeedbackRequest = match req.json().await {
+        Ok(body) => body,
+        Err(error) => {
+            console_log!("Failed to parse feedback request: {:?}", error);
+            return error_response_with_origin("INVALID_REQUEST", "Invalid JSON", 400, &origin);
+        }
+    };
+
+    // Validate feedback_text
+    let trimmed_text = feedback_req.feedback_text.trim();
+    if trimmed_text.is_empty() {
+        return error_response_with_origin(
+            "VALIDATION_ERROR",
+            "Feedback text cannot be empty",
+            400,
+            &origin,
+        );
+    }
+    if trimmed_text.len() > 1000 {
+        return error_response_with_origin(
+            "VALIDATION_ERROR",
+            "Feedback text cannot exceed 1000 characters",
+            400,
+            &origin,
+        );
+    }
+
+    // Validate signature (optional)
+    let signature = feedback_req
+        .signature
+        .as_ref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+
+    let now = Utc::now();
+    let submitted_at = now.to_rfc3339();
+
+    // Build enriched metadata
+    let mut enriched_metadata = feedback_req.metadata.clone();
+    enriched_metadata.insert("user_agent".to_string(), serde_json::json!(user_agent));
+    enriched_metadata.insert("ip_address".to_string(), serde_json::json!(ip_address));
+    enriched_metadata.insert("region".to_string(), serde_json::json!(region));
+    enriched_metadata.insert("submitted_at".to_string(), serde_json::json!(submitted_at));
+
+    // PRIMARY: Insert to Supabase
+    let supabase_success = insert_feedback_to_supabase(
+        &ctx,
+        trimmed_text,
+        signature.as_deref(),
+        &enriched_metadata,
+        &user_agent,
+        &ip_address,
+        &region,
+        &submitted_at,
+    )
+    .await;
+
+    if !supabase_success {
+        console_error!("Failed to insert feedback to Supabase");
+        return error_response_with_origin(
+            "STORAGE_ERROR",
+            "Failed to save feedback",
+            500,
+            &origin,
+        );
+    }
+
+    // SECONDARY: Archive to R2 (best effort)
+    let r2_enabled = ctx
+        .var("FEEDBACK_ARCHIVE_TO_R2")
+        .ok()
+        .and_then(|v| v.to_string().parse::<bool>().ok())
+        .unwrap_or(true);
+    if r2_enabled {
+        if let Ok(bucket) = ctx.bucket("FEEDBACK_BUCKET") {
+            let _ = archive_feedback_to_r2(
+                &bucket,
+                trimmed_text,
+                signature.as_deref(),
+                &enriched_metadata,
+            )
+            .await;
+        } else {
+            console_log!("FEEDBACK_BUCKET not configured, skipping R2 archive");
+        }
+    }
+
+    // Success response
+    let response = FeedbackResponse {
+        success: true,
+        error: None,
+    };
+    let json = serde_json::to_string(&response)?;
+    let headers = build_cors_headers(&origin)?;
+    headers.set("Content-Type", "application/json")?;
+    Ok(Response::ok(json)?.with_headers(headers))
+}
+
+async fn insert_feedback_to_supabase(
+    ctx: &RouteContext<()>,
+    feedback_text: &str,
+    signature: Option<&str>,
+    metadata: &JsonMap,
+    user_agent: &Option<String>,
+    ip_address: &Option<String>,
+    region: &Option<String>,
+    submitted_at: &str,
+) -> bool {
+    let supabase_url = match ctx.secret("SUPABASE_URL") {
+        Ok(url) => url.to_string(),
+        Err(_) => {
+            console_log!("SUPABASE_URL not configured");
+            return false;
+        }
+    };
+    let supabase_key = match ctx.secret("SUPABASE_SERVICE_KEY") {
+        Ok(key) => key.to_string(),
+        Err(_) => {
+            console_log!("SUPABASE_SERVICE_KEY not configured");
+            return false;
+        }
+    };
+    let table_name = ctx
+        .var("SUPABASE_FEEDBACK_TABLE")
+        .map(|v| v.to_string())
+        .unwrap_or_else(|_| "feedback_submissions".to_string());
+
+    let ym = metadata.get("ym").and_then(|v| v.as_str());
+    let url = metadata.get("url").and_then(|v| v.as_str());
+
+    let payload = serde_json::json!([{
+        "feedback_text": feedback_text,
+        "signature": signature,
+        "metadata": metadata,
+        "user_agent": user_agent,
+        "ip_address": ip_address,
+        "region": region,
+        "url": url,
+        "ym": ym,
+        "submitted_at": submitted_at,
+    }]);
+
+    let insert_url = format!("{}/rest/v1/{}", supabase_url, table_name);
+    let payload_json = match serde_json::to_string(&payload) {
+        Ok(json) => json,
+        Err(e) => {
+            console_error!("Failed to serialize feedback payload: {:?}", e);
+            return false;
+        }
+    };
+
+    let headers = Headers::new();
+    if let Err(e) = (|| -> Result<()> {
+        headers.set("apikey", &supabase_key)?;
+        headers.set("Authorization", &format!("Bearer {}", supabase_key))?;
+        headers.set("Content-Type", "application/json")?;
+        headers.set("Prefer", "return=minimal")?;
+        Ok(())
+    })() {
+        console_error!("Failed to build Supabase headers: {:?}", e);
+        return false;
+    }
+
+    let mut request_init = RequestInit::new();
+    request_init
+        .with_method(Method::Post)
+        .with_headers(headers)
+        .with_body(Some(payload_json.into()));
+
+    let supabase_req = match Request::new_with_init(&insert_url, &request_init) {
+        Ok(req) => req,
+        Err(e) => {
+            console_error!("Failed to create Supabase request: {:?}", e);
+            return false;
+        }
+    };
+
+    match Fetch::Request(supabase_req).send().await {
+        Ok(mut response) => {
+            let status = response.status_code();
+            if status >= 200 && status < 300 {
+                console_log!("Successfully inserted feedback to Supabase");
+                true
+            } else {
+                let error_text = response.text().await.unwrap_or_default();
+                console_error!("Supabase insert failed: {} - {}", status, error_text);
+                false
+            }
+        }
+        Err(e) => {
+            console_error!("Supabase request failed: {:?}", e);
+            false
+        }
+    }
+}
+
+async fn archive_feedback_to_r2(
+    bucket: &Bucket,
+    feedback_text: &str,
+    signature: Option<&str>,
+    metadata: &JsonMap,
+) -> Result<()> {
+    let now = Utc::now();
+    let date_path = now.format("%Y%m%d").to_string();
+    let uuid = uuid::Uuid::new_v4().to_string();
+    let key = format!("{}/{}.json", date_path, uuid);
+
+    let archive_payload = serde_json::json!({
+        "feedback_text": feedback_text,
+        "signature": signature,
+        "metadata": metadata,
+    });
+
+    let json_bytes = serde_json::to_vec(&archive_payload)
+        .map_err(|e| Error::RustError(format!("Failed to serialize R2 payload: {}", e)))?;
+
+    bucket
+        .put(&key, json_bytes)
+        .execute()
+        .await
+        .map_err(|e| Error::RustError(format!("Failed to write to R2: {:?}", e)))?;
+
+    console_log!("Feedback archived to R2: {}", key);
+    Ok(())
 }
 
 fn get_cached_schedule(ym: &str, ttl_seconds: u64) -> Option<String> {
