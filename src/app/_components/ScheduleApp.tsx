@@ -85,9 +85,14 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2 bg-card border-b border-border">
-          <MonthNav currentYM={currentYM} basePath={basePath} />
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-2 bg-card border-b border-border">
+          <div className="flex-1 flex justify-start">
+            <MonthNav currentYM={currentYM} basePath={basePath} />
+          </div>
+          <div className="flex justify-center">
+            <FeedbackButton />
+          </div>
+          <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 justify-end">
             <DensityToggle
               onDensityChange={densityChangeHandler}
               onLegendClick={handleLegendOpen}
@@ -100,7 +105,6 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
             >
               {viewMode === 'people' ? 'Vista turni' : 'Vista medici'}
             </button>
-            <FeedbackButton />
           </div>
         </div>
 
