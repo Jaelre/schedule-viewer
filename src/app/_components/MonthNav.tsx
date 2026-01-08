@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getPreviousYM, getNextYM, formatMonthDisplay } from '@/lib/date'
+import { getPreviousYM, getNextYM, formatMonthDisplay, formatMonthShort } from '@/lib/date'
 import { useTelemetry } from '@/app/providers'
 
 interface MonthNavProps {
@@ -55,9 +55,16 @@ export function MonthNav({ currentYM, basePath = '/' }: MonthNavProps) {
       </button>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="text-base font-semibold whitespace-nowrap">
+        {/* Mobile: Compact text, no input */}
+        <div className="sm:hidden text-base font-semibold whitespace-nowrap">
+          {formatMonthShort(currentYM)}
+        </div>
+        
+        {/* Desktop: Full text + Input */}
+        <div className="hidden sm:block text-base font-semibold whitespace-nowrap">
           {formatMonthDisplay(currentYM)}
         </div>
+        
         <label className="sr-only" htmlFor="month-picker">
           Seleziona mese
         </label>
@@ -66,7 +73,7 @@ export function MonthNav({ currentYM, basePath = '/' }: MonthNavProps) {
           type="month"
           value={currentYM}
           onChange={handleMonthChange}
-          className="rounded border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
+          className="hidden sm:block rounded border border-input bg-background px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
         />
       </div>
 

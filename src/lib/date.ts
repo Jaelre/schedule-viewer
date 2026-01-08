@@ -171,7 +171,26 @@ export function formatMonthDisplay(ym: string): string {
     month: 'long',
   })
 
-  return formatter.format(date)
+  // Capitalize first letter
+  const formatted = formatter.format(date)
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
+}
+
+/**
+ * Format a month for compact display (e.g., "Gen 26")
+ */
+export function formatMonthShort(ym: string): string {
+  const [year, month] = ym.split('-').map(Number)
+  const date = new Date(year, month - 1, 1)
+
+  const formatter = new Intl.DateTimeFormat('it-IT', {
+    year: '2-digit',
+    month: 'short',
+  })
+
+  // Capitalize first letter
+  const formatted = formatter.format(date)
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
 
 /**

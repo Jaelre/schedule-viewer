@@ -14,6 +14,9 @@ import { LegendModal } from './LegendModal'
 import { FeedbackButton } from './FeedbackButton'
 import { useTelemetry } from '@/app/providers'
 
+import { ViewToggle } from './ViewToggle'
+import { LegendButton } from './LegendButton'
+
 interface ScheduleAppProps {
   basePath?: string
 }
@@ -38,14 +41,6 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
     track({ feature: 'schedule_app', action: 'page_view', value: currentYM })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run once on initial page load
-
-  const handleToggleView = useCallback(() => {
-    setViewMode((previous) => {
-      const nextMode: ViewMode = previous === 'people' ? 'shifts' : 'people'
-      track({ feature: 'schedule_app', action: 'toggle_view', value: nextMode })
-      return nextMode
-    })
-  }, [track])
 
   const handleLegendOpen = useCallback(() => {
     if (isLegendOpen) return
@@ -85,26 +80,49 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-2 bg-card border-b border-border">
-          <div className="flex-1 flex justify-start">
-            <MonthNav currentYM={currentYM} basePath={basePath} />
+        {/* New Responsive Top Bar */}
+        <div className="flex flex-col bg-card border-b border-border px-4 py-2 gap-2">
+          {/* Row 1: Nav (Left) + Desktop Controls (Center/Right) + Mobile Feedback (Right) */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-shrink-0">
+              <MonthNav currentYM={currentYM} basePath={basePath} />
+            </div>
+
+            {/* Desktop Controls (> 640px) */}
+            <div className="hidden sm:flex items-center gap-3">
+              <ViewToggle
+                viewMode={viewMode}
+                onToggle={setViewMode}
+                variant="responsive"
+              />
+              <DensityToggle
+                onDensityChange={densityChangeHandler}
+                variant="responsive"
+              />
+              <LegendButton onClick={handleLegendOpen} variant="full" />
+              <FeedbackButton />
+            </div>
+
+            {/* Mobile Feedback (< 640px) */}
+            <div className="sm:hidden">
+              <FeedbackButton />
+            </div>
           </div>
-          <div className="flex justify-center">
-            <FeedbackButton />
-          </div>
-          <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 justify-end">
-            <DensityToggle
-              onDensityChange={densityChangeHandler}
-              onLegendClick={handleLegendOpen}
+
+          {/* Row 2: Mobile Controls (< 640px) */}
+          <div className="flex sm:hidden items-center justify-between gap-2">
+            <ViewToggle
+              viewMode={viewMode}
+              onToggle={setViewMode}
+              variant="compact"
             />
-            <button
-              type="button"
-              onClick={handleToggleView}
-              className="px-3 py-1.5 text-sm font-medium rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-secondary/90 transition-colors"
-              aria-pressed={viewMode === 'shifts'}
-            >
-              {viewMode === 'people' ? 'Vista turni' : 'Vista medici'}
-            </button>
+            <div className="flex items-center gap-2">
+              <DensityToggle
+                onDensityChange={densityChangeHandler}
+                variant="compact"
+              />
+              <LegendButton onClick={handleLegendOpen} variant="icon" />
+            </div>
           </div>
         </div>
 
