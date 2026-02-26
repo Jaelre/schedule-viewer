@@ -91,20 +91,44 @@ done
 
 echo ""
 echo -e "${GREEN}✅ All config files uploaded successfully!${NC}"
-echo ""
-echo -e "${BLUE}To verify, run:${NC}"
-if [ "$USE_REMOTE" = true ]; then
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-display.config.json --remote"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-styling.config.json --remote"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-colors.json --remote"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-names.json --remote"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/full-name-overrides.json --remote"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-photos.json --remote"
+
+# Upload doctor photos (PNG/JPG files from public/doctor-photos/)
+PHOTOS_DIR="public/doctor-photos"
+PHOTO_COUNT=0
+
+shopt -s nullglob
+PHOTO_FILES=("${PHOTOS_DIR}"/*.png "${PHOTOS_DIR}"/*.jpg "${PHOTOS_DIR}"/*.jpeg "${PHOTOS_DIR}"/*.webp)
+shopt -u nullglob
+
+if [ ${#PHOTO_FILES[@]} -gt 0 ]; then
+  echo ""
+  echo "Uploading doctor photos to R2..."
+  echo ""
+
+  for photo_path in "${PHOTO_FILES[@]}"; do
+    filename="$(basename "${photo_path}")"
+    ext="${filename##*.}"
+    case "$ext" in
+      jpg|jpeg) content_type="image/jpeg" ;;
+      webp)     content_type="image/webp" ;;
+      *)        content_type="image/png" ;;
+    esac
+
+    echo -e "Uploading ${YELLOW}${filename}${NC}..."
+    npx wrangler r2 object put "${BUCKET_NAME}/doctor-photos/${filename}" --file="${photo_path}" --content-type="${content_type}" ${WRANGLER_FLAGS}
+
+    if [ $? -eq 0 ]; then
+      echo -e "${GREEN}✓${NC} ${filename} uploaded successfully"
+      PHOTO_COUNT=$((PHOTO_COUNT + 1))
+    else
+      echo -e "${RED}✗${NC} Failed to upload ${filename}"
+      exit 1
+    fi
+  done
+
+  echo ""
+  echo -e "${GREEN}✅ ${PHOTO_COUNT} photo(s) uploaded successfully!${NC}"
 else
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-display.config.json"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-styling.config.json"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-colors.json"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-names.json"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/full-name-overrides.json"
-  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-photos.json"
+  echo ""
+  echo -e "${BLUE}ℹ️  No photos found in ${PHOTOS_DIR}, skipping.${NC}"
 fi

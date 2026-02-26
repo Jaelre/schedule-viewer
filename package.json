@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy": "wrangler deploy pages out"
+    "deploy": "npm run build && ./scripts/upload-config-to-r2.sh && npx wrangler pages deploy out --project-name schedule-viewer",
+    "deploy:preview": "npm run build && ./scripts/upload-config-to-r2.sh --preview && npx wrangler pages deploy out --project-name schedule-viewer --branch preview"
   },
   "repository": {
     "type": "git",
