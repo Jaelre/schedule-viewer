@@ -27,12 +27,12 @@ export function ScheduleGrid({ data, density, codes, codeMap, viewMode }: Schedu
     `${defaultNameColumnWidths[density]}px`
   )
 
-  const { getDoctorDisplayName } = useRuntimeConfig()
+  const { getDoctorDisplayName, doctorPhotos } = useRuntimeConfig()
 
   // Prepare people data
   const peopleWithNames = useMemo(
-    () => preparePeopleWithNames(people, getDoctorDisplayName),
-    [people, getDoctorDisplayName]
+    () => preparePeopleWithNames(people, getDoctorDisplayName, doctorPhotos.photos),
+    [people, getDoctorDisplayName, doctorPhotos.photos]
   )
 
   // Decide rendering strategy

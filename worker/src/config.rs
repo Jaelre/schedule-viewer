@@ -10,6 +10,7 @@ const CONFIG_STYLING: &str = "shift-styling.config.json";
 const CONFIG_COLORS: &str = "shift-colors.json";
 const CONFIG_DOCTOR_NAMES: &str = "doctor-names.json";
 const CONFIG_FULL_NAME_OVERRIDES: &str = "full-name-overrides.json";
+const CONFIG_DOCTOR_PHOTOS: &str = "doctor-photos.json";
 
 #[derive(Clone, Debug)]
 struct CachedConfig {
@@ -269,6 +270,7 @@ pub async fn handle_get_config(
         "shift-colors" => CONFIG_COLORS,
         "doctor-names" => CONFIG_DOCTOR_NAMES,
         "full-name-overrides" => CONFIG_FULL_NAME_OVERRIDES,
+        "doctor-photos" => CONFIG_DOCTOR_PHOTOS,
         _ => {
             return Response::error("Invalid config name", 400);
         }

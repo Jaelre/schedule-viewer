@@ -18,6 +18,7 @@ import type {
   RuntimeConfig,
   RuntimeConfigContextValue,
   ShiftStylingConfig,
+  DoctorPhotosConfig,
 } from './types'
 
 const DEFAULT_DOCTOR_NAMES: DoctorNamesDict = {
@@ -27,11 +28,14 @@ const DEFAULT_DOCTOR_NAMES: DoctorNamesDict = {
 
 const DEFAULT_SHIFT_STYLING: ShiftStylingConfig = {}
 
+const DEFAULT_DOCTOR_PHOTOS: DoctorPhotosConfig = { photos: {} }
+
 const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   doctorNames: DEFAULT_DOCTOR_NAMES,
   shiftColors: DEFAULT_SHIFT_COLORS,
   fullNameOverrides: [],
   shiftStyling: DEFAULT_SHIFT_STYLING,
+  doctorPhotos: DEFAULT_DOCTOR_PHOTOS,
 }
 
 const RuntimeConfigContext = createContext<RuntimeConfigContextValue | undefined>(undefined)
@@ -143,6 +147,28 @@ function sanitizeFullNameOverrides(raw: unknown): string[] {
   )
 }
 
+function sanitizeDoctorPhotos(raw: unknown): DoctorPhotosConfig {
+  if (
+    raw &&
+    typeof raw === 'object' &&
+    'photos' in raw &&
+    raw.photos &&
+    typeof raw.photos === 'object'
+  ) {
+    const cast = raw as DoctorPhotosConfig
+    return {
+      comment: typeof cast.comment === 'string' ? cast.comment : undefined,
+      photos: Object.fromEntries(
+        Object.entries(cast.photos).filter(
+          ([key, value]) => typeof key === 'string' && typeof value === 'string'
+        )
+      ),
+    }
+  }
+
+  return DEFAULT_DOCTOR_PHOTOS
+}
+
 function sanitizeShiftStyling(raw: unknown): ShiftStylingConfig {
   if (!raw || typeof raw !== 'object') {
     return DEFAULT_SHIFT_STYLING
@@ -185,13 +211,14 @@ export function RuntimeConfigProvider({ children }: { children: ReactNode }) {
         fetchJson<ShiftColorsData>('shift-colors.json'),
         fetchJson<string[]>('full-name-overrides.json'),
         fetchJson<ShiftStylingConfig>('shift-styling.config.json'),
+        fetchJson<DoctorPhotosConfig>('doctor-photos.json'),
       ])
 
       if (cancelled) {
         return
       }
 
-      const [doctorNamesResult, shiftColorsResult, fullNameOverridesResult, shiftStylingResult] = results
+      const [doctorNamesResult, shiftColorsResult, fullNameOverridesResult, shiftStylingResult, doctorPhotosResult] = results
 
       if (doctorNamesResult.status === 'rejected') {
         nextErrors.push('Impossibile caricare doctor-names.json. Uso dei nomi di fallback.')
@@ -226,6 +253,10 @@ export function RuntimeConfigProvider({ children }: { children: ReactNode }) {
           shiftStylingResult.status === 'fulfilled'
             ? sanitizeShiftStyling(shiftStylingResult.value)
             : DEFAULT_SHIFT_STYLING,
+        doctorPhotos:
+          doctorPhotosResult.status === 'fulfilled'
+            ? sanitizeDoctorPhotos(doctorPhotosResult.value)
+            : DEFAULT_DOCTOR_PHOTOS,
       })
 
       setErrorMessages(nextErrors)
@@ -282,6 +313,7 @@ export function RuntimeConfigProvider({ children }: { children: ReactNode }) {
       fullNameOverrideSet,
       getShiftColor,
       getDoctorDisplayName: getDoctorDisplayNameFromConfig,
+      doctorPhotos: config.doctorPhotos,
     }),
     [config, error, fullNameOverrideSet, getShiftColor, getDoctorDisplayNameFromConfig, isLoading]
   )
