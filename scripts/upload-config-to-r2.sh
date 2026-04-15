@@ -91,3 +91,20 @@ done
 
 echo ""
 echo -e "${GREEN}✅ All config files uploaded successfully!${NC}"
+echo ""
+echo -e "${BLUE}To verify, run:${NC}"
+if [ "$USE_REMOTE" = true ]; then
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-display.config.json --remote"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-styling.config.json --remote"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-colors.json --remote"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-names.json --remote"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/full-name-overrides.json --remote"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-photos.json --remote"
+else
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-display.config.json"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-styling.config.json"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/shift-colors.json"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-names.json"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/full-name-overrides.json"
+  echo "  npx wrangler r2 object get ${BUCKET_NAME}/doctor-photos.json"
+fi

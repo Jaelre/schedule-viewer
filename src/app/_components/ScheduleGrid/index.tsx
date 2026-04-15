@@ -8,8 +8,9 @@ import { VirtualizedGrid } from './VirtualizedGrid'
 import { ShiftDayGrid } from './ShiftDayGrid'
 import { preparePeopleWithNames, calculateNameColumnWidth } from './utils'
 import { densityConfig, defaultNameColumnWidths, ROW_VIRTUALIZATION_THRESHOLD } from './types'
-import type { Density, ViewMode } from './types'
+import type { Density, ViewMode, PersonWithDisplay } from './types'
 import { useRuntimeConfig } from '@/lib/config/runtime-config'
+import { PhotoModal } from './PhotoModal'
 
 interface ScheduleGridProps {
   data: MonthShifts
@@ -26,6 +27,10 @@ export function ScheduleGrid({ data, density, codes, codeMap, viewMode }: Schedu
   const [nameColumnWidth, setNameColumnWidth] = useState<string>(
     `${defaultNameColumnWidths[density]}px`
   )
+  const [selectedPhoto, setSelectedPhoto] = useState<{
+    src: string
+    name: string
+  } | null>(null)
 
   const { getDoctorDisplayName, doctorPhotos } = useRuntimeConfig()
 
@@ -49,6 +54,17 @@ export function ScheduleGrid({ data, density, codes, codeMap, viewMode }: Schedu
 
   const densitySettings = densityConfig[density]
 
+  const handlePhotoClick = (person: PersonWithDisplay) => {
+    if (!person.photoUrl) {
+      return
+    }
+
+    setSelectedPhoto({
+      src: person.photoUrl,
+      name: person.resolvedName,
+    })
+  }
+
   const commonProps = {
     data,
     density,
@@ -56,6 +72,7 @@ export function ScheduleGrid({ data, density, codes, codeMap, viewMode }: Schedu
     daysInMonth,
     nameColumnWidth,
     densitySettings,
+    onPhotoClick: handlePhotoClick,
   }
 
   if (viewMode === 'shifts') {
@@ -81,17 +98,37 @@ export function ScheduleGrid({ data, density, codes, codeMap, viewMode }: Schedu
 
   // Render appropriate grid component
   if (shouldVirtualize) {
-    return <VirtualizedGrid {...commonProps} />
+    return (
+      <>
+        <VirtualizedGrid {...commonProps} />
+        {selectedPhoto && (
+          <PhotoModal
+            src={selectedPhoto.src}
+            name={selectedPhoto.name}
+            onClose={() => setSelectedPhoto(null)}
+          />
+        )}
+      </>
+    )
   }
 
   return (
-    <div
-      className="border-t border-border"
-      style={{
-        height: 'calc(100vh - 60px)',
-      }}
-    >
-      <StaticGrid {...commonProps} />
-    </div>
+    <>
+      <div
+        className="border-t border-border"
+        style={{
+          height: 'calc(100vh - 60px)',
+        }}
+      >
+        <StaticGrid {...commonProps} />
+      </div>
+      {selectedPhoto && (
+        <PhotoModal
+          src={selectedPhoto.src}
+          name={selectedPhoto.name}
+          onClose={() => setSelectedPhoto(null)}
+        />
+      )}
+    </>
   )
 }

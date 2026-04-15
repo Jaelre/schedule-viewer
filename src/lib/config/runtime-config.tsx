@@ -24,6 +24,9 @@ import type {
 
 const DEFAULT_SHIFT_DISPLAY: ShiftDisplayConfig = {}
 const DEFAULT_SHIFT_STYLING: ShiftStylingConfig = {}
+const DEFAULT_DOCTOR_PHOTOS: DoctorPhotosConfig = {
+  photos: {},
+}
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 const RuntimeConfigContext = createContext<RuntimeConfigContextValue | undefined>(undefined)
@@ -200,6 +203,7 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   shiftDisplay: DEFAULT_SHIFT_DISPLAY,
   fullNameOverrides: [],
   shiftStyling: DEFAULT_SHIFT_STYLING,
+  doctorPhotos: DEFAULT_DOCTOR_PHOTOS,
 }
 
 export function RuntimeConfigProvider({ children }: { children: ReactNode }) {
@@ -221,12 +225,14 @@ export function RuntimeConfigProvider({ children }: { children: ReactNode }) {
           shiftDisplay,
           fullNameOverrides,
           shiftStyling,
+          doctorPhotos,
         ] = await Promise.all([
           fetchJson<DoctorNamesDict>('doctor-names.json'),
           fetchJson<ShiftColorsData>('shift-colors.json'),
           fetchJson<ShiftDisplayConfig>('shift-display.config.json'),
           fetchJson<string[]>('full-name-overrides.json'),
           fetchJson<ShiftStylingConfig>('shift-styling.config.json'),
+          fetchJson<DoctorPhotosConfig>('doctor-photos.json'),
         ])
 
         if (cancelled) {
@@ -239,6 +245,7 @@ export function RuntimeConfigProvider({ children }: { children: ReactNode }) {
           shiftDisplay: sanitizeShiftDisplay(shiftDisplay),
           fullNameOverrides: sanitizeFullNameOverrides(fullNameOverrides),
           shiftStyling: sanitizeShiftStyling(shiftStyling),
+          doctorPhotos: sanitizeDoctorPhotos(doctorPhotos),
         })
       } catch (error) {
         if (cancelled) {

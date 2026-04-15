@@ -1,26 +1,25 @@
 'use client'
 
-import { useState } from 'react'
 import { useRuntimeConfig } from '@/lib/config/runtime-config'
 
 import { getNameAbbreviation } from './utils'
 import { useAdaptiveCompactName } from './useAdaptiveCompactName'
-import { PhotoModal } from './PhotoModal'
 import type { PersonWithDisplay } from './types'
 
 interface NameCellContentProps {
   person: PersonWithDisplay
   isHorizontalScrollActive: boolean
   isExtraCompact: boolean
+  onPhotoClick: (person: PersonWithDisplay) => void
 }
 
 export function NameCellContent({
   person,
   isHorizontalScrollActive,
   isExtraCompact,
+  onPhotoClick,
 }: NameCellContentProps) {
   const { fullNameOverrideSet } = useRuntimeConfig()
-  const [showPhoto, setShowPhoto] = useState(false)
   const normalizedName = person.resolvedName.trim().toLowerCase()
   const shouldForceFullName = fullNameOverrideSet.has(normalizedName)
   const showFullNameInCompact = isHorizontalScrollActive && shouldForceFullName
@@ -41,8 +40,9 @@ export function NameCellContent({
       {!isHorizontalScrollActive && person.photoUrl && (
         <button
           type="button"
-          onClick={() => setShowPhoto(true)}
+          onClick={() => onPhotoClick(person)}
           className="mr-1.5 flex-none shrink-0 focus:outline-none"
+          style={{ pointerEvents: 'auto' }}
           aria-label={`Foto di ${person.resolvedName}`}
         >
           <img
@@ -72,14 +72,6 @@ export function NameCellContent({
           {person.pseudonym}
         </span>
       )}
-      {showPhoto && person.photoUrl && (
-        <PhotoModal
-          src={person.photoUrl}
-          name={person.resolvedName}
-          onClose={() => setShowPhoto(false)}
-        />
-      )}
     </>
   )
 }
-

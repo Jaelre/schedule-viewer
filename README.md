@@ -89,6 +89,7 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
 4. (Optional) adjust local dictionaries and styling overrides:
    - Edit the JSON files in `src/config/*.json`. Those files are the source of truth and are mirrored to the Worker/R2 config path.
    - Update `src/config/shift-display.config.json` to normalise aliases and override the labels shown in the grid and legend (for example, mapping `Nights` to `N`).
+   - Add portrait mappings in `src/config/doctor-photos.json` and place the corresponding images in `public/doctor-photos/` to show doctor icons beside names in the people view.
 
 5. Start the Next.js dev server:
 
