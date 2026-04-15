@@ -16,11 +16,11 @@ interface LegendModalProps {
 
 export function LegendModal({ codes, shiftNames, codeMap, isOpen, onClose }: LegendModalProps) {
   const { track } = useTelemetry()
-  const { getShiftColor } = useRuntimeConfig()
+  const { config, getShiftColor } = useRuntimeConfig()
   const legend = useMemo(() => {
     return codes.map((code) => {
       const colors = getShiftColor(code)
-      const label = resolveShiftLabel(code, shiftNames, codeMap)
+      const label = resolveShiftLabel(code, shiftNames, codeMap, config.shiftDisplay)
 
       return {
         code,
@@ -28,7 +28,7 @@ export function LegendModal({ codes, shiftNames, codeMap, isOpen, onClose }: Leg
         colors,
       }
     })
-  }, [codes, shiftNames, codeMap, getShiftColor])
+  }, [codes, shiftNames, codeMap, config.shiftDisplay, getShiftColor])
 
   // Handle escape key
   useEffect(() => {

@@ -34,7 +34,7 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
           className={`flex flex-col ${isExtraCompact ? 'items-stretch' : 'items-center'} justify-center min-w-0 ${chipGap}`}
         >
           {codes.map((code, idx) => {
-            const displayCode = getShiftDisplayCode(code)
+            const displayCode = getShiftDisplayCode(code, config.shiftDisplay)
             const colors = getShiftColor(displayCode)
             const underlineConfig = config.shiftStyling.conditionalUnderline
             // Check if conditional underline should be applied

@@ -1,12 +1,8 @@
 import {
-  getConfiguredLabel as getConfiguredLabelStatic,
-  normalizeDisplayToken as normalizeDisplayTokenStatic
-} from './shift-display-config'
-import {
   getConfiguredLabel as getConfiguredLabelDynamic,
   normalizeDisplayToken as normalizeDisplayTokenDynamic,
-  type ShiftDisplayConfig
 } from './config-client'
+import type { ShiftDisplayConfig } from './config/types'
 import type { ShiftCodeMap } from './types'
 
 export function resolveShiftLabel(
@@ -15,13 +11,8 @@ export function resolveShiftLabel(
   codeMap?: ShiftCodeMap,
   config?: ShiftDisplayConfig
 ): string {
-  // Use dynamic config if provided, otherwise fall back to static
-  const getConfiguredLabel = config
-    ? (key: string) => getConfiguredLabelDynamic(key, config)
-    : getConfiguredLabelStatic
-  const normalizeDisplayToken = config
-    ? (token: string) => normalizeDisplayTokenDynamic(token, config)
-    : normalizeDisplayTokenStatic
+  const getConfiguredLabel = (key: string) => getConfiguredLabelDynamic(key, config)
+  const normalizeDisplayToken = (token: string) => normalizeDisplayTokenDynamic(token, config)
 
   const directOverride = getConfiguredLabel(code)
   if (directOverride) {

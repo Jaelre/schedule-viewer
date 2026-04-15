@@ -1,7 +1,7 @@
 // lib/shift-format.ts - helpers for presenting shift codes consistently
 
-import { normalizeDisplayToken as normalizeFromStaticConfig } from './shift-display-config'
-import { normalizeDisplayToken as normalizeFromDynamicConfig, type ShiftDisplayConfig } from './config-client'
+import { normalizeDisplayToken as normalizeFromDynamicConfig } from './config-client'
+import type { ShiftDisplayConfig } from './config/types'
 
 /**
  * Return the compact shift code used throughout the UI.
@@ -13,7 +13,7 @@ import { normalizeDisplayToken as normalizeFromDynamicConfig, type ShiftDisplayC
  * mirror the same behaviour so that both views stay aligned.
  *
  * @param code - The shift code to format
- * @param config - Optional dynamic config from R2. If not provided, falls back to static config.
+ * @param config - Runtime config loaded from the Worker/R2 endpoint.
  */
 export function getShiftDisplayCode(code: string, config?: ShiftDisplayConfig): string {
   if (!code) {
@@ -38,9 +38,5 @@ export function getShiftDisplayCode(code: string, config?: ShiftDisplayConfig): 
   const leadingChunk = withoutParen.split(' ')[0]?.trim() ?? ''
   const token = leadingChunk || withoutParen
 
-  // Use dynamic config if provided, otherwise fall back to static
-  if (config) {
-    return normalizeFromDynamicConfig(token, config)
-  }
-  return normalizeFromStaticConfig(token)
+  return normalizeFromDynamicConfig(token, config)
 }

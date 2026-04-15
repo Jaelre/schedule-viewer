@@ -1,6 +1,11 @@
 import type { DoctorNamesDict, DoctorDisplayName } from '@/lib/doctor-names'
 import type { ShiftColorsData } from '@/lib/colors'
 
+export interface ShiftDisplayConfig {
+  aliases?: Record<string, string>
+  labels?: Record<string, string>
+}
+
 export interface ShiftStylingConfig {
   conditionalUnderline?: {
     shiftCode: string
@@ -16,6 +21,7 @@ export interface DoctorPhotosConfig {
 export interface RuntimeConfig {
   doctorNames: DoctorNamesDict
   shiftColors: ShiftColorsData
+  shiftDisplay: ShiftDisplayConfig
   fullNameOverrides: string[]
   shiftStyling: ShiftStylingConfig
   doctorPhotos: DoctorPhotosConfig
