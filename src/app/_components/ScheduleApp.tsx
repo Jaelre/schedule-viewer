@@ -75,7 +75,7 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
           <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-md p-4">
             <p className="text-sm font-semibold">Configurazione parziale</p>
             <p className="text-sm mt-1">
-              {configError} È possibile aggiornare i file JSON in <code>/public/config</code> senza dover ricostruire il sito.
+              {configError} La UI legge la configurazione runtime dal Worker/R2; verifica che i file in <code>src/config</code> siano stati sincronizzati correttamente.
             </p>
           </div>
         )}

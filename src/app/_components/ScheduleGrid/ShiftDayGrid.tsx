@@ -119,7 +119,7 @@ export function ShiftDayGrid({
   const { ym, rows, shiftNames } = data
   const { cellPadding, textSize, placeholderText, rowHeight } = densitySettings
   const gridGap = density === 'extra-compact' ? 0 : 1
-  const { getShiftColor } = useRuntimeConfig()
+  const { config, getShiftColor } = useRuntimeConfig()
 
   const dayHeaders = useMemo(
     () => Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -180,7 +180,7 @@ export function ShiftDayGrid({
       })}
 
       {shiftOrder.map((code) => {
-        const label = resolveShiftLabel(code, shiftNames, codeMap)
+        const label = resolveShiftLabel(code, shiftNames, codeMap, config.shiftDisplay)
         const subtitle = getShiftSubtitle(code, label)
         const shiftColor = getShiftColor(code)
 

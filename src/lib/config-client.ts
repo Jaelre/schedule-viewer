@@ -1,20 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+import type { ShiftDisplayConfig, ShiftStylingConfig } from './config/types'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787/api'
-
-export interface ShiftDisplayConfig {
-  aliases?: Record<string, string>
-  labels?: Record<string, string>
-}
-
-export interface ConditionalUnderline {
-  shiftCode: string
-  weekdays: number[]
-}
-
-export interface ShiftStylingConfig {
-  conditionalUnderline?: ConditionalUnderline
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 /**
  * Fetch shift display config from R2 via Worker API
