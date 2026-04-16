@@ -20,6 +20,7 @@ src/config/shift-colors.json filter=git-crypt diff=git-crypt
 src/config/shift-styling.config.json filter=git-crypt diff=git-crypt
 src/config/shift-display.config.json filter=git-crypt diff=git-crypt
 src/config/full-name-overrides.json filter=git-crypt diff=git-crypt
+public/doctor-photos
 
 # Private documentation
 docs/private/** filter=git-crypt diff=git-crypt
