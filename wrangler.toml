@@ -13,9 +13,10 @@ pages_build_output_dir = "out"
 binding = "WORKER"
 service = "schedule-viewer-worker"
 
-# Preview environment - binds to separate preview Worker service
-# This ensures preview builds use preview R2 buckets and configs
+# Preview environment - defaults to the same Worker service.
+# If a dedicated preview Worker is introduced later, change this binding to point
+# at that service explicitly.
 [env.preview]
 [[env.preview.services]]
 binding = "WORKER"
-service = "schedule-viewer-worker-preview"
+service = "schedule-viewer-worker"

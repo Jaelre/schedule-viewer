@@ -30,6 +30,8 @@
 - PRs should include a one-paragraph summary, linked issues, before/after visuals for UI changes, and lint/test output.
 
 ## Security & Configuration Tips
-- Copy `.json.example` files in `src/lib` when adjusting doctor or shift metadata, and keep sensitive variants out of Git.
+- Runtime config source files live in `src/config/` and are uploaded to R2 via `./scripts/upload-config-to-r2.sh`.
+- Sensitive config in `src/config/` is tracked with `git-crypt`; do not move it back to `public/config/`.
+- Pages preview builds currently bind to the same Worker service as production unless a separate preview Worker is explicitly configured in the root `wrangler.toml`.
 - Manage Worker secrets with `wrangler secret put API_TOKEN`; never hardcode keys in TypeScript or Rust.
 - Review `worker/wrangler.toml` before deploying to confirm API endpoints, cache TTLs, and build commands remain correct.

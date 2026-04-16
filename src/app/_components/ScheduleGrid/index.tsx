@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useMemo, useState } from 'react'
 import { getDaysInMonth } from '@/lib/date'
-import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
+import type { MonthShifts } from '@/lib/types'
 import { StaticGrid } from './StaticGrid'
 import { VirtualizedGrid } from './VirtualizedGrid'
 import { ShiftDayGrid } from './ShiftDayGrid'
@@ -16,11 +16,10 @@ interface ScheduleGridProps {
   data: MonthShifts
   density: Density
   codes: string[]
-  codeMap?: ShiftCodeMap
   viewMode: ViewMode
 }
 
-export function ScheduleGrid({ data, density, codes, codeMap, viewMode }: ScheduleGridProps) {
+export function ScheduleGrid({ data, density, codes, viewMode }: ScheduleGridProps) {
   const { ym, people } = data
   const isExtraCompact = density === 'extra-compact'
 
@@ -90,7 +89,6 @@ export function ScheduleGrid({ data, density, codes, codeMap, viewMode }: Schedu
           daysInMonth={daysInMonth}
           densitySettings={densitySettings}
           codes={codes}
-          codeMap={codeMap}
         />
       </div>
     )

@@ -17,27 +17,27 @@ R2 buckets store runtime configuration files and telemetry data.
 ```bash
 # Config buckets (for shift display/styling configs)
 wrangler r2 bucket create schedule-viewer-config
-wrangler r2 bucket create schedule-viewer-config-preview
 
 # Telemetry buckets (for event storage)
 wrangler r2 bucket create schedule-viewer-telemetry
-wrangler r2 bucket create schedule-viewer-telemetry-preview
 ```
 
 ## Step 2: Upload Configuration to R2
 
-Prepare and upload config files to R2:
+Prepare and upload runtime config files to R2:
 
 ```bash
 # Edit configs locally if needed
+# - src/config/doctor-names.json
+# - src/config/shift-colors.json
 # - src/config/shift-display.config.json
 # - src/config/shift-styling.config.json
+# - src/config/full-name-overrides.json
+# - src/config/doctor-photos.json
 
 # Upload to production bucket
 ./scripts/upload-config-to-r2.sh
 
-# Or upload to preview for testing
-./scripts/upload-config-to-r2.sh --preview
 ```
 
 ## Step 3: Deploy Cloudflare Worker
@@ -75,6 +75,7 @@ curl https://your-worker-url.workers.dev/api/shifts?ym=2025-12
 # Test config endpoints (public)
 curl https://your-worker-url.workers.dev/api/config/shift-display
 curl https://your-worker-url.workers.dev/api/config/shift-styling
+curl https://your-worker-url.workers.dev/api/config/doctor-photos
 ```
 
 ## Step 6: Configure Frontend Environment
@@ -86,11 +87,12 @@ Create production environment variables for the frontend build:
 cat > .env.production << 'EOF'
 NEXT_PUBLIC_API_URL=https://your-worker-url.workers.dev/api
 NEXT_PUBLIC_DEFAULT_UNIT_NAME="Emergency Department"
-NEXT_PUBLIC_SHIFT_CODE_DICT='{"D":{"label":"Day"},"N":{"label":"Night"},"O":{"label":"Off"}}'
 EOF
 ```
 
-Update `NEXT_PUBLIC_API_URL` with your actual Worker URL from Step 3.
+Update `NEXT_PUBLIC_API_URL` with your actual Worker URL from Step 3. If you deploy with the same-origin Pages Functions proxy, use `NEXT_PUBLIC_API_URL=/api` instead.
+
+Pages preview builds use the same Worker binding by default. If you later add a dedicated preview Worker, update the root `wrangler.toml` `[env.preview]` binding and only then introduce separate preview R2 buckets.
 
 ## Step 7: Deploy Frontend to Cloudflare Pages
 
@@ -102,7 +104,7 @@ Update `NEXT_PUBLIC_API_URL` with your actual Worker URL from Step 3.
 4. Configure build settings:
    - Build command: `npm run build`
    - Build output directory: `out`
-   - Environment variables: Add all `NEXT_PUBLIC_*` variables from .env.production
+   - Environment variables: Add the same `NEXT_PUBLIC_*` values you use locally
 5. Click "Save and Deploy"
 
 ### Option B: Manual Deploy
@@ -146,10 +148,13 @@ To update shift display or styling configs without redeploying:
 # Edit config files locally
 vim src/config/shift-display.config.json
 vim src/config/shift-styling.config.json
+vim src/config/doctor-photos.json
 
 # Upload to R2 (takes effect after 5min cache expiry)
 ./scripts/upload-config-to-r2.sh
 ```
+
+Doctor portrait images themselves are static assets under `public/doctor-photos/`, so image changes require a frontend redeploy in addition to the config upload.
 
 ## Rotating Secrets
 

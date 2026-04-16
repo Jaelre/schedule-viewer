@@ -2,25 +2,23 @@
 
 import { useMemo, useEffect, useRef } from 'react'
 import { resolveShiftLabel } from '@/lib/shift-labels'
-import type { ShiftCodeMap } from '@/lib/types'
 import { useTelemetry } from '@/app/providers'
 import { useRuntimeConfig } from '@/lib/config/runtime-config'
 
 interface LegendModalProps {
   codes: string[]
   shiftNames?: Record<string, string>
-  codeMap?: ShiftCodeMap
   isOpen: boolean
   onClose: () => void
 }
 
-export function LegendModal({ codes, shiftNames, codeMap, isOpen, onClose }: LegendModalProps) {
+export function LegendModal({ codes, shiftNames, isOpen, onClose }: LegendModalProps) {
   const { track } = useTelemetry()
   const { config, getShiftColor } = useRuntimeConfig()
   const legend = useMemo(() => {
     return codes.map((code) => {
       const colors = getShiftColor(code)
-      const label = resolveShiftLabel(code, shiftNames, codeMap, config.shiftDisplay)
+      const label = resolveShiftLabel(code, shiftNames, config.shiftDisplay)
 
       return {
         code,
@@ -28,7 +26,7 @@ export function LegendModal({ codes, shiftNames, codeMap, isOpen, onClose }: Leg
         colors,
       }
     })
-  }, [codes, shiftNames, codeMap, config.shiftDisplay, getShiftColor])
+  }, [codes, shiftNames, config.shiftDisplay, getShiftColor])
 
   // Handle escape key
   useEffect(() => {

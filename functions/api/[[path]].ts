@@ -10,6 +10,9 @@
  * 2. In Cloudflare Pages dashboard:
  *    Settings > Functions > Service bindings
  *    Add binding: WORKER = schedule-viewer-worker
+ *
+ * Preview Pages builds use the same binding unless you explicitly configure
+ * a separate preview Worker service in the root wrangler.toml.
  */
 
 interface Env {

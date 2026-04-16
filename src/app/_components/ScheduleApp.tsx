@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getCurrentYM, isValidYM } from '@/lib/date'
 import { useMonthShifts } from '@/lib/api-client'
-import { shiftCodeMap } from '@/lib/shift-code-map'
 import { RuntimeConfigProvider, useRuntimeConfig } from '@/lib/config/runtime-config'
 import { MonthNav } from './MonthNav'
 import { DensityToggle, type Density } from './DensityToggle'
@@ -159,7 +158,6 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
                 data={data}
                 density={density}
                 codes={data.codes || []}
-                codeMap={shiftCodeMap}
                 viewMode={viewMode}
               />
             ) : (
@@ -173,7 +171,6 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
             <LegendModal
               codes={data.codes || []}
               shiftNames={data.shiftNames}
-              codeMap={shiftCodeMap}
               isOpen={isLegendOpen}
               onClose={() => setIsLegendOpen(false)}
             />

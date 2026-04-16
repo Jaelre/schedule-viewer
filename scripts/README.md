@@ -14,7 +14,7 @@ Uploads configuration files from `src/config/` to Cloudflare R2 storage.
 # Upload to production bucket
 ./scripts/upload-config-to-r2.sh
 
-# Upload to preview bucket (for testing)
+# Upload to preview bucket (only useful if you also deploy a preview Worker)
 ./scripts/upload-config-to-r2.sh --preview
 ```
 
@@ -28,10 +28,18 @@ Uploads configuration files from `src/config/` to Cloudflare R2 storage.
    wrangler r2 bucket create schedule-viewer-config-preview
    ```
 
+The preview bucket is optional. Pages preview builds will not use it unless the
+root `wrangler.toml` preview binding points at a separately deployed preview
+Worker.
+
 **Config Files Uploaded:**
 
+- `doctor-names.json` - API IDs and pseudonyms mapped to display names
+- `shift-colors.json` - Per-code color palette and fallback color generation
 - `shift-display.config.json` - Shift code aliases and label overrides
 - `shift-styling.config.json` - Conditional shift styling rules
+- `full-name-overrides.json` - Names that should stay expanded in compact layouts
+- `doctor-photos.json` - Doctor ID to portrait filename mapping
 
 **Verification:**
 

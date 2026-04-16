@@ -125,7 +125,7 @@ export const PrintableSchedule = forwardRef<HTMLDivElement, PrintableSchedulePro
             <h3 className="mb-2 font-semibold">Legenda codici</h3>
             <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {month.codes.map(code => {
-                const friendly = resolveShiftLabel(code, month.shiftNames, undefined, config.shiftDisplay)
+                const friendly = resolveShiftLabel(code, month.shiftNames, config.shiftDisplay)
                 return (
                   <li key={code} className="flex gap-2">
                     <span className="font-semibold">{code}</span>
