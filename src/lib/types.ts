@@ -23,12 +23,6 @@ export type MonthShifts = {
   shiftNames?: Record<string, string>
 }
 
-export type ShiftCodeMap = {
-  [code: string]: {
-    label: string
-  }
-}
-
 // Error response from Worker
 export type ApiError = {
   code: string

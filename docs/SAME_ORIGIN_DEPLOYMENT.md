@@ -58,6 +58,8 @@ This gives the Pages Function access to call the Worker as an internal service (
 
 **Verification**: After deployment, check Pages Settings > Functions > Service bindings to confirm `WORKER` binding exists.
 
+By default, both production and preview Pages builds bind to the same Worker service. If you want preview Pages builds to use separate preview R2 buckets, you must deploy a separate preview Worker and point `[env.preview]` at that Worker explicitly.
+
 ### 3. Relative API URLs
 
 `.env.production`:

@@ -10,12 +10,14 @@ interface NameCellContentProps {
   person: PersonWithDisplay
   isHorizontalScrollActive: boolean
   isExtraCompact: boolean
+  onPhotoClick: (person: PersonWithDisplay) => void
 }
 
 export function NameCellContent({
   person,
   isHorizontalScrollActive,
   isExtraCompact,
+  onPhotoClick,
 }: NameCellContentProps) {
   const { fullNameOverrideSet } = useRuntimeConfig()
   const normalizedName = person.resolvedName.trim().toLowerCase()
@@ -35,6 +37,23 @@ export function NameCellContent({
 
   return (
     <>
+      {!isHorizontalScrollActive && person.photoUrl && (
+        <button
+          type="button"
+          onClick={() => onPhotoClick(person)}
+          className="mr-1.5 flex-none shrink-0 focus:outline-none"
+          style={{ pointerEvents: 'auto' }}
+          aria-label={`Foto di ${person.resolvedName}`}
+        >
+          <img
+            src={person.photoUrl}
+            alt={person.resolvedName}
+            width={20}
+            height={20}
+            className="h-5 w-5 rounded-full object-cover"
+          />
+        </button>
+      )}
       <span
         ref={nameRef}
         style={showFullNameInCompact ? style : undefined}
@@ -56,4 +75,3 @@ export function NameCellContent({
     </>
   )
 }
-

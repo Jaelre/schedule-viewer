@@ -136,7 +136,6 @@ Worker extracts from MetricAid API response:
 ### Frontend (.env.local)
 ```bash
 NEXT_PUBLIC_DEFAULT_UNIT_NAME="Emergency Department"
-NEXT_PUBLIC_SHIFT_CODE_DICT='{"D":{"label":"Day"},"N":{"label":"Night"},"O":{"label":"Off"}}'
 NEXT_PUBLIC_API_URL=http://localhost:8787/api  # Dev: point to local worker
 ```
 
@@ -146,7 +145,6 @@ NEXT_PUBLIC_API_URL=http://localhost:8787/api  # Dev: point to local worker
 [[r2_buckets]]
 binding = "CONFIG_BUCKET"
 bucket_name = "schedule-viewer-config"
-preview_bucket_name = "schedule-viewer-config-preview"
 
 [vars]
 API_BASE_URL = "https://api.metricaid.com/api/v1"
@@ -166,8 +164,9 @@ Configs are now stored in Cloudflare R2 and can be updated without rebuilding/re
 **1. Create R2 Buckets** (one-time setup):
 ```bash
 wrangler r2 bucket create schedule-viewer-config
-wrangler r2 bucket create schedule-viewer-config-preview
 ```
+
+Create preview buckets only if you also run a separate preview Worker.
 
 **2. Edit Config Files Locally**:
 - `src/config/shift-display.config.json` - Shift code aliases and labels
@@ -175,13 +174,14 @@ wrangler r2 bucket create schedule-viewer-config-preview
 - `src/config/shift-colors.json` - Color definitions for shift codes
 - `src/config/doctor-names.json` - Doctor name mappings (API IDs to real names)
 - `src/config/full-name-overrides.json` - List of doctors to show full names for
+- `src/config/doctor-photos.json` - Doctor ID to portrait filename mapping
 
 **3. Upload to R2**:
 ```bash
 # Upload to production (remote Cloudflare R2 - default)
 ./scripts/upload-config-to-r2.sh
 
-# Upload to preview bucket
+# Upload to preview bucket (only useful with a dedicated preview Worker)
 ./scripts/upload-config-to-r2.sh --preview
 
 # Upload to local R2 (development only)
@@ -199,17 +199,16 @@ wrangler r2 bucket create schedule-viewer-config-preview
 - `GET /api/config/shift-colors` - Returns shift color definitions
 - `GET /api/config/doctor-names` - Returns doctor name mappings
 - `GET /api/config/full-name-overrides` - Returns full name override list
+- `GET /api/config/doctor-photos` - Returns doctor portrait mappings
 
 **Fallback Behavior**:
 - If R2 fetch fails, Worker uses empty defaults ({} for objects, [] for arrays)
 - Frontend gracefully handles missing configs with built-in defaults
 
-### Adding a New Shift Code (Legacy Method)
-1. Update `NEXT_PUBLIC_SHIFT_CODE_DICT` in `.env.local`
-2. (Optional) Add predefined color in `src/lib/colors.ts` if needed
-3. Worker automatically includes any code from upstream API
-
-**Note**: Consider using R2 config instead (see above) for runtime updates.
+### Adding a New Shift Code
+1. Update `src/config/shift-display.config.json` if the upstream label needs normalization or an override
+2. Update `src/config/shift-colors.json` if the new code needs a fixed color
+3. Upload the config to R2 with `./scripts/upload-config-to-r2.sh`
 
 ### Modifying Grid Behavior
 - **Component**: `src/app/_components/ScheduleGrid.tsx`
@@ -247,7 +246,7 @@ wrangler r2 bucket create schedule-viewer-config-preview
 1. Push to GitHub
 2. Connect repo in Cloudflare dashboard
 3. Build: `npm run build`, Output: `out`
-4. Set env: `NEXT_PUBLIC_API_URL=https://worker-url/api`
+4. Set env: `NEXT_PUBLIC_API_URL=/api` when using the Pages Functions proxy, or `https://worker-url/api` when calling the Worker directly
 
 **Option 2: Manual Deploy**
 ```bash
@@ -260,8 +259,8 @@ npx wrangler pages deploy out --project-name schedule-viewer
 1. **Create R2 Buckets** (one-time):
    ```bash
    wrangler r2 bucket create schedule-viewer-config
-   wrangler r2 bucket create schedule-viewer-config-preview
    ```
+   Add preview buckets only if you deploy a dedicated preview Worker.
 
 2. **Upload Initial Config**:
    ```bash
@@ -280,6 +279,7 @@ npx wrangler pages deploy out --project-name schedule-viewer
    ```
 
 5. **Update Frontend Env**: `NEXT_PUBLIC_API_URL=https://schedule-viewer-worker.your-account.workers.dev/api`
+   Use `NEXT_PUBLIC_API_URL=/api` if the Pages project is using the same-origin proxy in `functions/api/[[path]].ts`.
 
 ## Troubleshooting
 

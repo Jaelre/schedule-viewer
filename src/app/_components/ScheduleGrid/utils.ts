@@ -1,7 +1,7 @@
 import type { DoctorDisplayName } from '@/lib/doctor-names'
 import type { Person } from '@/lib/types'
 import type { PersonWithDisplay, Density } from './types'
-import { densityHorizontalPadding, defaultNameColumnWidths, pseudonymPadding, widthBuffer } from './types'
+import { densityHorizontalPadding, defaultNameColumnWidths, pseudonymPadding, widthBuffer, PHOTO_ICON_WIDTH } from './types'
 
 export function getNameAbbreviation(name: string): string {
   const trimmed = name.trim()
@@ -31,18 +31,22 @@ export function preparePeopleWithNames(
   resolveDisplayName: (
     id: string | number,
     apiName?: string
-  ) => DoctorDisplayName
+  ) => DoctorDisplayName,
+  doctorPhotos?: Record<string, string>
 ): PersonWithDisplay[] {
   return people
     .map((person, index) => {
       const displayInfo = resolveDisplayName(person.id, person.name)
+      const photoFilename = doctorPhotos?.[person.id]
+      const photoUrl = photoFilename ? `/doctor-photos/${photoFilename}` : null
 
       return {
         ...person,
         displayName: displayInfo.display,
         resolvedName: displayInfo.name || displayInfo.display,
         pseudonym: displayInfo.pseudonym ?? null,
-        originalIndex: index
+        originalIndex: index,
+        photoUrl,
       }
     })
     .filter(person => !person.displayName.startsWith('zzz_'))
@@ -89,7 +93,8 @@ export function calculateNameColumnWidth(
     const pseudonymWidth = person.pseudonym
       ? context.measureText(person.pseudonym).width + pseudonymSpacing
       : 0
-    const total = baseWidth + pseudonymWidth
+    const photoOffset = person.photoUrl ? PHOTO_ICON_WIDTH : 0
+    const total = baseWidth + pseudonymWidth + photoOffset
     if (total > maxContentWidth) {
       maxContentWidth = total
     }

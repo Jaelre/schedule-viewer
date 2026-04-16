@@ -6,7 +6,6 @@ import { MonthNav } from '@/app/_components/MonthNav'
 import { LegendModal } from '@/app/_components/LegendModal'
 import { getCurrentYM, isValidYM, formatMonthDisplay } from '@/lib/date'
 import { useMonthShifts } from '@/lib/api-client'
-import { shiftCodeMap } from '@/lib/shift-code-map'
 import { exportShiftsToPdf } from '@/lib/pdf/exportShiftsToPdf'
 import { PrintableSchedule } from './PrintableSchedule'
 import { useTelemetry } from '@/app/providers'
@@ -139,7 +138,6 @@ export function PdfExportApp() {
           <LegendModal
             codes={data.codes || []}
             shiftNames={data.shiftNames}
-            codeMap={shiftCodeMap}
             isOpen={isLegendOpen}
             onClose={() => setIsLegendOpen(false)}
           />

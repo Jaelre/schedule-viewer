@@ -13,12 +13,18 @@ export interface ShiftStylingConfig {
   }
 }
 
+export interface DoctorPhotosConfig {
+  comment?: string
+  photos: Record<string, string>
+}
+
 export interface RuntimeConfig {
   doctorNames: DoctorNamesDict
   shiftColors: ShiftColorsData
   shiftDisplay: ShiftDisplayConfig
   fullNameOverrides: string[]
   shiftStyling: ShiftStylingConfig
+  doctorPhotos: DoctorPhotosConfig
 }
 
 export interface RuntimeConfigContextValue {
@@ -31,4 +37,5 @@ export interface RuntimeConfigContextValue {
     id: string | number,
     apiName?: string
   ) => DoctorDisplayName
+  doctorPhotos: DoctorPhotosConfig
 }

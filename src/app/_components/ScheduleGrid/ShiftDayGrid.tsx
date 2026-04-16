@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { isWeekend, isItalianHoliday } from '@/lib/date'
 import { resolveShiftLabel } from '@/lib/shift-labels'
-import type { MonthShifts, ShiftCodeMap } from '@/lib/types'
+import type { MonthShifts } from '@/lib/types'
 import type { Density, DensitySettings, PersonWithDisplay } from './types'
 import { getNameAbbreviation } from './utils'
 import { useRuntimeConfig } from '@/lib/config/runtime-config'
@@ -17,7 +17,6 @@ interface ShiftDayGridProps {
   daysInMonth: number
   densitySettings: DensitySettings
   codes: string[]
-  codeMap?: ShiftCodeMap
 }
 
 type ShiftAssignments = Record<string, Record<number, PersonWithDisplay[]>>
@@ -114,7 +113,6 @@ export function ShiftDayGrid({
   daysInMonth,
   densitySettings,
   codes,
-  codeMap,
 }: ShiftDayGridProps) {
   const { ym, rows, shiftNames } = data
   const { cellPadding, textSize, placeholderText, rowHeight } = densitySettings
@@ -180,7 +178,7 @@ export function ShiftDayGrid({
       })}
 
       {shiftOrder.map((code) => {
-        const label = resolveShiftLabel(code, shiftNames, codeMap, config.shiftDisplay)
+        const label = resolveShiftLabel(code, shiftNames, config.shiftDisplay)
         const subtitle = getShiftSubtitle(code, label)
         const shiftColor = getShiftColor(code)
 

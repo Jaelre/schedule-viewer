@@ -22,4 +22,4 @@ We will build the user interface with **Next.js 15 (App Router) + React 19** sty
 - `/app/_components` hosts the MonthNav, DensityToggle, LegendCard, and ScheduleGrid components composed by the `/app/page.tsx` entry point.
 - `/lib` gathers shared utilities for date calculations (Italian holidays, Rome timezone), deterministic colour generation, API clients, and shared types.
 - The Worker normalises upstream payloads into a `MonthShifts` structure with `people`, `rows`, and optional `codes`, and sets cache headers derived from `CACHE_TTL_SECONDS`.
-- Environment variables: `API_BASE_URL`, `API_TOKEN`, `API_TIMEOUT_MS`, `CACHE_TTL_SECONDS` for the Worker; `NEXT_PUBLIC_DEFAULT_UNIT_NAME` and `NEXT_PUBLIC_SHIFT_CODE_DICT` for the frontend.
+- Environment variables: `API_BASE_URL`, `API_TOKEN`, `API_TIMEOUT_MS`, `CACHE_TTL_SECONDS` for the Worker; `NEXT_PUBLIC_DEFAULT_UNIT_NAME` and `NEXT_PUBLIC_API_URL` for the frontend.

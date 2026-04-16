@@ -61,6 +61,7 @@ export const defaultNameColumnWidths: Record<Density, number> = {
 export const pseudonymPadding = 8
 export const widthBuffer = 4
 export const compactNameColumnWidth = 72
+export const PHOTO_ICON_WIDTH = 28
 
 export interface PersonWithDisplay {
   id: string
@@ -69,6 +70,7 @@ export interface PersonWithDisplay {
   resolvedName: string
   pseudonym: string | null
   originalIndex: number
+  photoUrl: string | null
 }
 
 export interface GridCommonProps {

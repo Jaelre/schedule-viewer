@@ -82,8 +82,10 @@ To enable R2 storage for telemetry:
 1. Create the R2 buckets (one-time setup):
    ```bash
    wrangler r2 bucket create schedule-viewer-telemetry
-   wrangler r2 bucket create schedule-viewer-telemetry-preview
    ```
+
+   Create `schedule-viewer-telemetry-preview` only if you also run a separate
+   preview Worker environment.
 
 2. The buckets are already configured in `wrangler.toml` with binding `TELEMETRY_BUCKET`.
 

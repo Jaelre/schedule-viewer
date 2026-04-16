@@ -2,21 +2,19 @@
 
 import { useMemo } from 'react'
 import { resolveShiftLabel } from '@/lib/shift-labels'
-import type { ShiftCodeMap } from '@/lib/types'
 import { useRuntimeConfig } from '@/lib/config/runtime-config'
 
 interface LegendCardProps {
   codes: string[]
   shiftNames?: Record<string, string>
-  codeMap?: ShiftCodeMap
 }
 
-export function LegendCard({ codes, shiftNames, codeMap }: LegendCardProps) {
+export function LegendCard({ codes, shiftNames }: LegendCardProps) {
   const { config, getShiftColor } = useRuntimeConfig()
   const legend = useMemo(() => {
     return codes.map((code) => {
       const colors = getShiftColor(code)
-      const label = resolveShiftLabel(code, shiftNames, codeMap, config.shiftDisplay)
+      const label = resolveShiftLabel(code, shiftNames, config.shiftDisplay)
 
       return {
         code,
@@ -24,7 +22,7 @@ export function LegendCard({ codes, shiftNames, codeMap }: LegendCardProps) {
         colors,
       }
     })
-  }, [codes, shiftNames, codeMap, config.shiftDisplay, getShiftColor])
+  }, [codes, shiftNames, config.shiftDisplay, getShiftColor])
 
   if (legend.length === 0) {
     return null

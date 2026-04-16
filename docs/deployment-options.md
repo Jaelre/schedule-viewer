@@ -30,15 +30,19 @@ Schedule Viewer now ships as a fully static Next.js export. All data access, cac
 ### 2. Build and publish the static frontend
 
 1. Set the public environment variables that are baked into the static export. These can be supplied via `.env.production` locally or via your Pages/CI configuration:
-   - `NEXT_PUBLIC_API_URL` → the Worker origin plus `/api` (e.g. `https://schedule-viewer-worker.your-account.workers.dev/api`).
+   - `NEXT_PUBLIC_API_URL` → the Worker origin plus `/api` (e.g. `https://schedule-viewer-worker.your-account.workers.dev/api`), or `/api` when using the same-origin proxy described in [SAME_ORIGIN_DEPLOYMENT.md](SAME_ORIGIN_DEPLOYMENT.md).
    - `NEXT_PUBLIC_DEFAULT_UNIT_NAME`
-   - `NEXT_PUBLIC_SHIFT_CODE_DICT`
-2. Build the export:
+2. Upload runtime config from `src/config/` to the R2 bucket used by the Worker:
+   ```bash
+   ./scripts/upload-config-to-r2.sh
+   ```
+   If you use doctor portraits, keep `src/config/doctor-photos.json` in sync with the files stored under `public/doctor-photos/`.
+3. Build the export:
    ```bash
    npm install
    npm run build   # writes the static site to out/
    ```
-3. Upload the `out/` directory to your static host:
+4. Upload the `out/` directory to your static host:
    - **Cloudflare Pages**: create a Pages project, set the variables above, set build command `npm run build`, and specify `out` as the output directory.
    - **Other static hosts** (S3 + CloudFront, Netlify Drop, GitHub Pages, etc.): upload the contents of `out/` and ensure the site is served over HTTPS.
 
@@ -66,4 +70,3 @@ You are free to host the static export anywhere, provided it can call the Worker
 - **Internal portals**: bundle the static assets into the existing site but preserve the fetches to the Worker and forward the bearer token header unmodified.
 
 Regardless of host, never expose the MetricAid `API_TOKEN` to the frontend. All secrets stay inside the Worker, and the only shared secret is the password/token pair managed through `ACCESS_PASSWORD`.
-

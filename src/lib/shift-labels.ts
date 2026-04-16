@@ -3,12 +3,10 @@ import {
   normalizeDisplayToken as normalizeDisplayTokenDynamic,
 } from './config-client'
 import type { ShiftDisplayConfig } from './config/types'
-import type { ShiftCodeMap } from './types'
 
 export function resolveShiftLabel(
   code: string,
   shiftNames?: Record<string, string>,
-  codeMap?: ShiftCodeMap,
   config?: ShiftDisplayConfig
 ): string {
   const getConfiguredLabel = (key: string) => getConfiguredLabelDynamic(key, config)
@@ -19,7 +17,7 @@ export function resolveShiftLabel(
     return directOverride
   }
 
-  const label = shiftNames?.[code] || codeMap?.[code]?.label || code
+  const label = shiftNames?.[code] || code
   const normalized = normalizeDisplayToken(label)
 
   const overrideFromNormalized = getConfiguredLabel(normalized)

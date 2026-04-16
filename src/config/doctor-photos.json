@@ -1,0 +1,19 @@
+{
+  "comment": "Maps doctor API IDs to portrait photo filenames in /doctor-photos/",
+  "photos": {
+    "33963": "superali.png",
+    "33959": "moni.png",
+    "33937": "bibi.png",
+    "30415": "giorgione.png",
+    "36704": "paganuzzi.png",
+    "33949": "jachettone.png",
+    "33958": "lollo_ghibli.png",
+    "33956": "silvietta.png",    
+    "33951": "eli_ghibli.png",
+    "33964": "ricky.png",
+    "33939": "gilly.png"
+
+
+
+  }
+}

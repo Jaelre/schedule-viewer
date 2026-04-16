@@ -76,8 +76,6 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
    # optionally set NEXT_PUBLIC_API_URL to point at a local/remote Worker
  ```
 
-   Populate `NEXT_PUBLIC_SHIFT_CODE_DICT` if you want custom labels surfaced in the UI legend.
-
 3. Set the access password used by the worker-managed gate:
 
    ```bash
@@ -89,6 +87,7 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
 4. (Optional) adjust local dictionaries and styling overrides:
    - Edit the JSON files in `src/config/*.json`. Those files are the source of truth and are mirrored to the Worker/R2 config path.
    - Update `src/config/shift-display.config.json` to normalise aliases and override the labels shown in the grid and legend (for example, mapping `Nights` to `N`).
+   - Add portrait mappings in `src/config/doctor-photos.json` and place the corresponding images in `public/doctor-photos/` to show doctor icons beside names in the people view.
 
 5. Start the Next.js dev server:
 
@@ -137,7 +136,8 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
 - **Cloudflare Pages (frontend)**:
   - Build command: `npm run build` (Next.js static export writes to `out/`).
   - Output directory: `out`.
-  - Environments need the same variables as `.env.local` (e.g. `NEXT_PUBLIC_DEFAULT_UNIT_NAME`, `NEXT_PUBLIC_SHIFT_CODE_DICT`, `NEXT_PUBLIC_API_URL` pointing at the Worker).
+  - Environments need the same variables as `.env.local`.
+  - `NEXT_PUBLIC_API_URL` can point directly at the Worker, or be set to `/api` when using the same-origin Pages Functions proxy described in [docs/SAME_ORIGIN_DEPLOYMENT.md](docs/SAME_ORIGIN_DEPLOYMENT.md).
 
 - **Worker secrets**:
   - `API_TOKEN`: MetricAid API authentication
@@ -145,8 +145,8 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
 
 ## Favicon cache busting
 
-- Favicons and PWA icons include a version query string (currently `?v=2`) to force browsers to fetch new assets when icons change.
-- When updating any files under `public/icons/`, bump the version in both `src/app/layout.tsx` and `public/icons/site.webmanifest`.
+- Favicons and PWA icons include a version query string (currently `?v=3`) to force browsers to fetch new assets when icons change.
+- When updating files under `public/icons/`, bump `ICON_ASSET_VERSION` in [src/lib/icon-assets.ts](/Users/jaelre/coding/schedule-viewer/src/lib/icon-assets.ts). Both the page metadata and generated manifest will pick it up.
 - See [docs/favicon-cache-busting.md](docs/favicon-cache-busting.md) for the step-by-step process.
 
 ## Telemetry

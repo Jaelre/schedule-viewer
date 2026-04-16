@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { iconAssetPath } from '@/lib/icon-assets'
 import './globals.css'
 import { Providers } from './providers'
 
@@ -10,13 +11,12 @@ export const metadata: Metadata = {
   description: 'Visualizzazione turni mensili',
   icons: {
     icon: [
-      { url: '/icons/favicon-16x16.png?v=2', sizes: '16x16', type: 'image/png' },
-      { url: '/icons/favicon-32x32.png?v=2', sizes: '32x32', type: 'image/png' },
-      { url: '/icons/favicon.ico?v=2', sizes: 'any' },
+      { url: iconAssetPath('/icons/favicon-16x16.png'), sizes: '16x16', type: 'image/png' },
+      { url: iconAssetPath('/icons/favicon-32x32.png'), sizes: '32x32', type: 'image/png' },
+      { url: iconAssetPath('/icons/favicon.ico'), sizes: 'any' },
     ],
-    apple: '/icons/apple-touch-icon.png?v=2',
+    apple: iconAssetPath('/icons/apple-touch-icon.png'),
   },
-  manifest: '/icons/site.webmanifest',
 }
 
 export default function RootLayout({

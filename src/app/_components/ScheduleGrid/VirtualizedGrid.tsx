@@ -5,11 +5,12 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { getDaysInMonth, isWeekend, isItalianHoliday } from '@/lib/date'
 import { ShiftCell } from './ShiftCell'
 import { compactNameColumnWidth } from './types'
-import type { GridCommonProps, DensitySettings } from './types'
+import type { GridCommonProps, DensitySettings, PersonWithDisplay } from './types'
 import { NameCellContent } from './NameCellContent'
 
 interface VirtualizedGridProps extends GridCommonProps {
   densitySettings: DensitySettings
+  onPhotoClick: (person: PersonWithDisplay) => void
 }
 
 export function VirtualizedGrid({
@@ -19,6 +20,7 @@ export function VirtualizedGrid({
   daysInMonth,
   nameColumnWidth,
   densitySettings,
+  onPhotoClick,
 }: VirtualizedGridProps) {
   const parentRef = useRef<HTMLDivElement>(null)
   const { ym, rows } = data
@@ -124,6 +126,7 @@ export function VirtualizedGrid({
                   person={person}
                   isHorizontalScrollActive={isHorizontalScrollActive}
                   isExtraCompact={isExtraCompact}
+                  onPhotoClick={onPhotoClick}
                 />
               </div>
             )

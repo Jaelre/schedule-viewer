@@ -6,9 +6,11 @@ import { ShiftCell } from './ShiftCell'
 import { compactNameColumnWidth } from './types'
 import type { GridCommonProps, DensitySettings } from './types'
 import { NameCellContent } from './NameCellContent'
+import type { PersonWithDisplay } from './types'
 
 interface StaticGridProps extends GridCommonProps {
   densitySettings: DensitySettings
+  onPhotoClick: (person: PersonWithDisplay) => void
 }
 
 export function StaticGrid({
@@ -18,6 +20,7 @@ export function StaticGrid({
   daysInMonth,
   nameColumnWidth,
   densitySettings,
+  onPhotoClick,
 }: StaticGridProps) {
   const gridRef = useRef<HTMLDivElement>(null)
   const { ym, rows } = data
@@ -109,6 +112,7 @@ export function StaticGrid({
                 person={person}
                 isHorizontalScrollActive={isHorizontalScrollActive}
                 isExtraCompact={isExtraCompact}
+                onPhotoClick={onPhotoClick}
               />
             </div>
 
