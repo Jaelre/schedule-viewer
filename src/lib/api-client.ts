@@ -2,26 +2,16 @@
 
 import { useQuery, UseQueryResult } from '@tanstack/react-query'
 import type { MonthShifts, ApiResponse, ApiError } from './types'
-
-/**
- * Base API URL - in development, this proxies through Next.js
- * In production (static export), this calls the Cloudflare Worker directly
- */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
+import { resolveApiUrl, withViewerCredentials } from './api-base'
 
 /**
  * Fetch month shifts data from the Worker
  */
 async function getMonthShifts({ ym }: { ym: string }): Promise<MonthShifts> {
-  // Get auth token from localStorage
-  const token = typeof window !== 'undefined' ? localStorage.getItem('schedule_viewer_token') : null
-
-  const headers: HeadersInit = {}
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-
-  const response = await fetch(`${API_BASE_URL}/shifts?ym=${ym}`, { headers })
+  const response = await fetch(
+    resolveApiUrl(`/shifts?ym=${ym}`),
+    withViewerCredentials()
+  )
 
   if (!response.ok) {
     const errorData: ApiResponse<never> = await response.json()
@@ -72,18 +62,14 @@ interface FeedbackResponse {
 }
 
 export async function submitFeedback(payload: FeedbackPayload): Promise<void> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('schedule_viewer_token') : null
-
-  const headers: HeadersInit = { 'Content-Type': 'application/json' }
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-
-  const response = await fetch(`${API_BASE_URL}/feedback`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload),
-  })
+  const response = await fetch(
+    resolveApiUrl('/feedback'),
+    withViewerCredentials({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  )
 
   if (!response.ok) {
     const errorData: FeedbackResponse = await response.json().catch(() => ({

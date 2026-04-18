@@ -1,8 +1,11 @@
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::{DateTime, Utc};
 use constant_time_eq::constant_time_eq;
+use hmac::{Hmac, Mac};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use sha2::Sha256;
 use std::collections::{HashMap, HashSet};
 use std::sync::RwLock;
 use worker::*;
@@ -11,6 +14,12 @@ mod config;
 mod utils;
 
 const UPSTREAM_TIMEOUT_MESSAGE: &str = "Upstream request timed out";
+const SESSION_COOKIE: &str = "schedule_viewer_session";
+const VISITOR_COOKIE: &str = "schedule_viewer_vid";
+const LEGACY_ACCESS_COOKIE: &str = "schedule_viewer_access";
+const DEFAULT_SESSION_TTL_SECONDS: u64 = 60 * 60 * 24 * 30;
+const VISITOR_COOKIE_TTL_SECONDS: u64 = 60 * 60 * 24 * 365;
+const TELEMETRY_ARCHIVE_MAX_PART_BYTES: usize = 10 * 1024 * 1024;
 
 // Environment variables
 struct Config {
@@ -40,8 +49,6 @@ struct TelemetryBatch {
     flush: bool,
     #[serde(default)]
     stream: Option<String>,
-    #[serde(default, rename = "authToken")]
-    auth_token: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -65,6 +72,10 @@ struct TelemetryMetadata {
     ip_address: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     region: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    visitor_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    session_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     stream: Option<String>,
     received_at: String,
@@ -186,6 +197,14 @@ struct FeedbackResponse {
     error: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct ViewerSessionClaims {
+    sid: String,
+    vid: String,
+    iat: i64,
+    exp: i64,
+}
+
 #[derive(Serialize)]
 struct ErrorDetails {
     code: String,
@@ -284,6 +303,32 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
         .await
 }
 
+#[event(scheduled)]
+pub async fn handle_scheduled(event: ScheduledEvent, env: Env, _ctx: ScheduleContext) {
+    if !resolve_bool_var(&env, "TELEMETRY_ARCHIVE_TO_R2", true) {
+        return;
+    }
+
+    if resolve_telemetry_archive_mode(&env) != "daily" {
+        return;
+    }
+
+    let archive_day = Utc::now().date_naive() - chrono::Duration::days(1);
+
+    match export_daily_archive_from_supabase(&env, archive_day).await {
+        Ok(()) => {
+            console_log!(
+                "Scheduled telemetry archive export completed for {} via cron {}",
+                archive_day.format("%Y-%m-%d"),
+                event.cron()
+            );
+        }
+        Err(error) => {
+            console_error!("Scheduled telemetry archive export failed: {:?}", error);
+        }
+    }
+}
+
 async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     // Parse config from environment
     let config = match get_config(&ctx) {
@@ -322,13 +367,17 @@ async fn handle_shifts(req: Request, ctx: RouteContext<()>) -> Result<Response> 
         .and_then(|v| v.to_string().parse::<u64>().ok())
         .unwrap_or(300);
 
-    let shift_display_config = match config::get_shift_display_config(&bucket, config_cache_ttl).await {
-        Ok(cfg) => cfg,
-        Err(e) => {
-            console_log!("Failed to fetch shift display config from R2: {:?}, using defaults", e);
-            config::ShiftDisplayConfig::default()
-        }
-    };
+    let shift_display_config =
+        match config::get_shift_display_config(&bucket, config_cache_ttl).await {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                console_log!(
+                    "Failed to fetch shift display config from R2: {:?}, using defaults",
+                    e
+                );
+                config::ShiftDisplayConfig::default()
+            }
+        };
 
     // Build upstream URL with token as query parameter
     let upstream_url = format!(
@@ -423,11 +472,174 @@ async fn flush_events_to_storage(
     Ok(())
 }
 
+fn resolve_bool_var(env: &Env, name: &str, default: bool) -> bool {
+    env.var(name)
+        .ok()
+        .and_then(|value| value.to_string().parse::<bool>().ok())
+        .unwrap_or(default)
+}
+
+fn resolve_telemetry_archive_mode(env: &Env) -> String {
+    env.var("TELEMETRY_ARCHIVE_MODE")
+        .ok()
+        .map(|value| value.to_string().to_lowercase())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| "daily".to_string())
+}
+
+async fn write_daily_archive_part(
+    bucket: &Bucket,
+    day: &str,
+    part_index: usize,
+    payload: String,
+) -> Result<()> {
+    let key = format!("{}/daily-{:03}.jsonl", day, part_index);
+
+    bucket
+        .put(&key, payload.into_bytes())
+        .execute()
+        .await
+        .map_err(|e| {
+            Error::RustError(format!(
+                "Failed to write daily telemetry archive to R2: {:?}",
+                e
+            ))
+        })?;
+
+    console_log!("Telemetry daily archive written to R2: {}", key);
+    Ok(())
+}
+
+async fn export_daily_archive_from_supabase(
+    env: &Env,
+    archive_day: chrono::NaiveDate,
+) -> Result<()> {
+    let bucket = match env.bucket("TELEMETRY_BUCKET") {
+        Ok(bucket) => bucket,
+        Err(error) => {
+            console_log!(
+                "TELEMETRY_BUCKET not configured, skipping daily Supabase archive export: {:?}",
+                error
+            );
+            return Ok(());
+        }
+    };
+
+    let supabase_url = match env.secret("SUPABASE_URL") {
+        Ok(url) => url.to_string(),
+        Err(_) => {
+            console_log!("SUPABASE_URL not configured, skipping daily telemetry archive export");
+            return Ok(());
+        }
+    };
+    let supabase_key = match env.secret("SUPABASE_SERVICE_KEY") {
+        Ok(key) => key.to_string(),
+        Err(_) => {
+            console_log!(
+                "SUPABASE_SERVICE_KEY not configured, skipping daily telemetry archive export"
+            );
+            return Ok(());
+        }
+    };
+    let table_name = env
+        .var("SUPABASE_TELEMETRY_TABLE")
+        .map(|value| value.to_string())
+        .unwrap_or_else(|_| "telemetry_events".to_string());
+
+    let day_key = archive_day.format("%Y%m%d").to_string();
+    let range_start = archive_day.format("%Y-%m-%dT00:00:00Z").to_string();
+    let range_end = (archive_day + chrono::Duration::days(1))
+        .format("%Y-%m-%dT00:00:00Z")
+        .to_string();
+
+    let mut offset = 0usize;
+    let page_size = 1000usize;
+    let mut part_index = 1usize;
+    let mut part_payload = String::new();
+    let mut total_rows = 0usize;
+
+    loop {
+        let request_url = format!(
+            "{}/rest/v1/{}?select=*&timestamp=gte.{}&timestamp=lt.{}&order=timestamp.asc,id.asc&limit={}&offset={}",
+            supabase_url, table_name, range_start, range_end, page_size, offset
+        );
+
+        let headers = Headers::new();
+        headers.set("apikey", &supabase_key)?;
+        headers.set("Authorization", &format!("Bearer {}", supabase_key))?;
+        headers.set("Accept", "application/json")?;
+
+        let mut request_init = RequestInit::new();
+        request_init.with_method(Method::Get).with_headers(headers);
+
+        let request = Request::new_with_init(&request_url, &request_init)?;
+        let mut response = Fetch::Request(request).send().await?;
+
+        if response.status_code() < 200 || response.status_code() >= 300 {
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(Error::RustError(format!(
+                "Failed to read daily telemetry archive from Supabase: {} - {}",
+                response.status_code(),
+                error_text
+            )));
+        }
+
+        let rows: Vec<serde_json::Value> = response.json().await?;
+        if rows.is_empty() {
+            break;
+        }
+
+        total_rows += rows.len();
+
+        for row in rows {
+            let serialized = serde_json::to_string(&row).map_err(|e| {
+                Error::RustError(format!(
+                    "Failed to serialize daily telemetry archive row for {}: {}",
+                    day_key, e
+                ))
+            })?;
+
+            let additional_len = if part_payload.is_empty() {
+                serialized.len()
+            } else {
+                serialized.len() + 1
+            };
+
+            if !part_payload.is_empty()
+                && part_payload.len() + additional_len > TELEMETRY_ARCHIVE_MAX_PART_BYTES
+            {
+                write_daily_archive_part(&bucket, &day_key, part_index, part_payload).await?;
+                part_index += 1;
+                part_payload = String::new();
+            }
+
+            if !part_payload.is_empty() {
+                part_payload.push('\n');
+            }
+            part_payload.push_str(&serialized);
+        }
+
+        offset += page_size;
+    }
+
+    if !part_payload.is_empty() {
+        write_daily_archive_part(&bucket, &day_key, part_index, part_payload).await?;
+    }
+
+    console_log!(
+        "Daily telemetry archive export completed for {} with {} rows",
+        day_key,
+        total_rows
+    );
+    Ok(())
+}
+
 async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let origin = req
         .headers()
         .get("Origin")?
         .unwrap_or_else(|| "*".to_string());
+    let session = extract_viewer_session(&req, &ctx);
 
     let user_agent = req
         .headers()
@@ -446,6 +658,14 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         .and_then(|cf| cf.region())
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
+    let visitor_id = session
+        .as_ref()
+        .map(|session| session.vid.clone())
+        .or_else(|| extract_non_empty_header(&req, "X-Viewer-Visitor-Id"));
+    let session_id = session
+        .as_ref()
+        .map(|session| session.sid.clone())
+        .or_else(|| extract_non_empty_header(&req, "X-Viewer-Session-Id"));
 
     let batch: TelemetryBatch = match req.json().await {
         Ok(body) => body,
@@ -455,18 +675,12 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         }
     };
 
-    // Check auth: first from header, then from body (for sendBeacon requests)
-    let has_auth = has_access_token(&req, &ctx)
-        || batch
-            .auth_token
-            .as_ref()
-            .map(|token| verify_access_token(token, &ctx))
-            .unwrap_or(false);
+    let has_auth = session.is_some() || has_access_token(&req, &ctx);
 
     if !has_auth {
         return error_response_with_origin(
             "UNAUTHORIZED",
-            "Missing or invalid access token",
+            "Missing or invalid viewer session",
             401,
             &origin,
         );
@@ -476,7 +690,6 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
         events,
         flush,
         stream,
-        auth_token: _,
     } = batch;
 
     let enriched_events: Vec<EnrichedTelemetryEvent> = events
@@ -487,6 +700,8 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
                 user_agent: user_agent.clone(),
                 ip_address: ip_address.clone(),
                 region: region.clone(),
+                visitor_id: visitor_id.clone(),
+                session_id: session_id.clone(),
                 stream: stream.clone(),
                 received_at: Utc::now().to_rfc3339(),
             },
@@ -535,6 +750,8 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
                         "user_agent": event.metadata.user_agent.as_deref(),
                         "ip_address": event.metadata.ip_address.as_deref(),
                         "region": event.metadata.region.as_deref(),
+                        "visitor_id": event.metadata.visitor_id.as_deref(),
+                        "session_id": event.metadata.session_id.as_deref(),
                         "viewport_width": event.fields.get("viewport")
                             .and_then(|v| v.get("width"))
                             .and_then(|v| v.as_i64()),
@@ -567,10 +784,9 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
                         .with_headers(headers)
                         .with_body(Some(payload_json.into()));
 
-                    if let Ok(supabase_req) = Request::new_with_init(
-                        &supabase_insert_url,
-                        &request_init,
-                    ) {
+                    if let Ok(supabase_req) =
+                        Request::new_with_init(&supabase_insert_url, &request_init)
+                    {
                         match Fetch::Request(supabase_req).send().await {
                             Ok(mut response) => {
                                 let status = response.status_code();
@@ -607,14 +823,20 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
             .unwrap_or(true);
 
         if r2_enabled {
-            let log_only = ctx
-                .var("TELEMETRY_LOG_ONLY")
-                .ok()
-                .and_then(|v| v.to_string().parse::<bool>().ok())
-                .unwrap_or(false);
+            let log_only = resolve_bool_var(&ctx.env, "TELEMETRY_LOG_ONLY", false);
+            let archive_mode = resolve_telemetry_archive_mode(&ctx.env);
 
-            let bucket = ctx.bucket("TELEMETRY_BUCKET").ok();
-            let _ = flush_events_to_storage(&events, bucket.as_ref(), log_only).await;
+            if log_only {
+                let _ = flush_events_to_storage(&events, None, true).await;
+            } else if archive_mode == "daily" {
+                console_log!(
+                    "Telemetry archive deferred to daily Supabase export ({} events)",
+                    events.len()
+                );
+            } else {
+                let bucket = ctx.bucket("TELEMETRY_BUCKET").ok();
+                let _ = flush_events_to_storage(&events, bucket.as_ref(), false).await;
+            }
         }
     }
 
@@ -634,7 +856,7 @@ async fn handle_feedback(mut req: Request, ctx: RouteContext<()>) -> Result<Resp
     if !has_access_token(&req, &ctx) {
         return error_response_with_origin(
             "UNAUTHORIZED",
-            "Missing or invalid access token",
+            "Missing or invalid viewer session",
             401,
             &origin,
         );
@@ -1170,28 +1392,142 @@ fn extract_shift_code(alias: &str, shift_display_config: &config::ShiftDisplayCo
     normalised
 }
 
-fn verify_access_token(token: &str, ctx: &RouteContext<()>) -> bool {
-    if let Ok(expected_password) = ctx.secret("ACCESS_PASSWORD") {
-        let expected = expected_password.to_string();
-        return constant_time_eq(token.trim().as_bytes(), expected.trim().as_bytes());
+fn extract_non_empty_header(req: &Request, name: &str) -> Option<String> {
+    req.headers()
+        .get(name)
+        .ok()
+        .flatten()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn parse_cookies(req: &Request) -> HashMap<String, String> {
+    let mut cookies = HashMap::new();
+    let Ok(Some(cookie_header)) = req.headers().get("Cookie") else {
+        return cookies;
+    };
+
+    for cookie in cookie_header.split(';') {
+        let trimmed = cookie.trim();
+        if let Some((name, value)) = trimmed.split_once('=') {
+            let key = name.trim();
+            let value = value.trim();
+            if !key.is_empty() && !value.is_empty() {
+                cookies.insert(key.to_string(), value.to_string());
+            }
+        }
     }
-    false
+
+    cookies
+}
+
+fn resolve_cookie_name(name: &str, req: &Request) -> String {
+    if req
+        .url()
+        .map(|url| url.scheme() == "https")
+        .unwrap_or(false)
+    {
+        format!("__Host-{}", name)
+    } else {
+        name.to_string()
+    }
+}
+
+fn read_cookie(req: &Request, name: &str) -> Option<String> {
+    let cookies = parse_cookies(req);
+    cookies
+        .get(&resolve_cookie_name(name, req))
+        .cloned()
+        .or_else(|| cookies.get(name).cloned())
+}
+
+fn build_cookie(name: &str, value: &str, max_age_seconds: u64, req: &Request) -> String {
+    let mut parts = vec![
+        format!("{}={}", resolve_cookie_name(name, req), value),
+        "Path=/".to_string(),
+        "HttpOnly".to_string(),
+        "SameSite=Lax".to_string(),
+        format!("Max-Age={}", max_age_seconds),
+    ];
+
+    if req
+        .url()
+        .map(|url| url.scheme() == "https")
+        .unwrap_or(false)
+    {
+        parts.push("Secure".to_string());
+    }
+
+    parts.join("; ")
+}
+
+fn build_expired_cookie(name: &str, req: &Request) -> String {
+    build_cookie(name, "", 0, req)
+}
+
+fn append_cookie(headers: &Headers, cookie: &str) -> Result<()> {
+    headers.append("Set-Cookie", cookie)
+}
+
+fn resolve_session_signing_secret(ctx: &RouteContext<()>) -> Option<String> {
+    ctx.secret("SESSION_SECRET")
+        .ok()
+        .map(|secret| secret.to_string())
+        .or_else(|| {
+            ctx.secret("ACCESS_PASSWORD")
+                .ok()
+                .map(|secret| secret.to_string())
+        })
+}
+
+fn resolve_session_ttl_seconds(ctx: &RouteContext<()>) -> u64 {
+    ctx.var("SESSION_TTL_SECONDS")
+        .ok()
+        .and_then(|value| value.to_string().parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(DEFAULT_SESSION_TTL_SECONDS)
+}
+
+fn sign_viewer_session(claims: &ViewerSessionClaims, secret: &str) -> Result<String> {
+    let payload = serde_json::to_vec(claims)
+        .map(|json| URL_SAFE_NO_PAD.encode(json))
+        .map_err(|e| Error::RustError(format!("Failed to encode session payload: {}", e)))?;
+
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes())
+        .map_err(|_| Error::RustError("Invalid session secret".to_string()))?;
+    mac.update(payload.as_bytes());
+    let signature = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
+
+    Ok(format!("{}.{}", payload, signature))
+}
+
+fn verify_viewer_session(token: &str, secret: &str) -> Option<ViewerSessionClaims> {
+    let (payload, signature) = token.split_once('.')?;
+    let expected_signature = URL_SAFE_NO_PAD.decode(signature).ok()?;
+
+    let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).ok()?;
+    mac.update(payload.as_bytes());
+    mac.verify_slice(&expected_signature).ok()?;
+
+    let decoded_payload = URL_SAFE_NO_PAD.decode(payload).ok()?;
+    let claims: ViewerSessionClaims = serde_json::from_slice(&decoded_payload).ok()?;
+    let now = Utc::now().timestamp();
+
+    if claims.exp <= now || claims.sid.trim().is_empty() || claims.vid.trim().is_empty() {
+        return None;
+    }
+
+    Some(claims)
+}
+
+fn extract_viewer_session(req: &Request, ctx: &RouteContext<()>) -> Option<ViewerSessionClaims> {
+    let token = read_cookie(req, SESSION_COOKIE)?;
+    let secret = resolve_session_signing_secret(ctx)?;
+    verify_viewer_session(&token, &secret)
 }
 
 fn has_access_token(req: &Request, ctx: &RouteContext<()>) -> bool {
-    // Check for token in Authorization header
-    if let Ok(Some(auth_header)) = req.headers().get("Authorization") {
-        if let Some(token) = auth_header.strip_prefix("Bearer ") {
-            return verify_access_token(token, ctx);
-        }
-    }
-    // Fallback: check for old cookie-based auth for backward compatibility
-    if let Ok(Some(cookie_header)) = req.headers().get("Cookie") {
-        return cookie_header
-            .split(';')
-            .any(|cookie| cookie.trim().starts_with("schedule_viewer_access=granted"));
-    }
-    false
+    extract_viewer_session(req, ctx).is_some()
 }
 
 async fn handle_check_access(req: Request, ctx: RouteContext<()>) -> Result<Response> {
@@ -1209,11 +1545,14 @@ async fn handle_check_access(req: Request, ctx: RouteContext<()>) -> Result<Resp
     };
 
     let json = serde_json::to_string(&response)?;
-    let headers = Headers::new();
+    let headers = build_cors_headers(&origin)?;
     headers.set("Content-Type", "application/json")?;
-    headers.set("Access-Control-Allow-Origin", &origin)?;
-    headers.set("Access-Control-Allow-Credentials", "true")?;
     headers.set("Cache-Control", "no-store, must-revalidate")?;
+
+    if !has_access {
+        append_cookie(&headers, &build_expired_cookie(SESSION_COOKIE, &req))?;
+        append_cookie(&headers, &build_expired_cookie(LEGACY_ACCESS_COOKIE, &req))?;
+    }
 
     Ok(Response::ok(json)?.with_headers(headers))
 }
@@ -1260,27 +1599,54 @@ async fn handle_access(mut req: Request, ctx: RouteContext<()>) -> Result<Respon
         };
 
         let json = serde_json::to_string(&response)?;
-        let headers = Headers::new();
+        let headers = build_cors_headers(&origin)?;
         headers.set("Content-Type", "application/json")?;
-        headers.set("Access-Control-Allow-Origin", &origin)?;
-        headers.set("Access-Control-Allow-Credentials", "true")?;
+        headers.set("Cache-Control", "no-store, must-revalidate")?;
 
         return Ok(Response::error(json, 401)?.with_headers(headers));
     }
 
-    // Success - return token in response body (password is the token)
-    // Client will store this in localStorage and send it in Authorization header
+    let visitor_id =
+        read_cookie(&req, VISITOR_COOKIE).unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let now = Utc::now().timestamp();
+    let session_ttl_seconds = resolve_session_ttl_seconds(&ctx);
+    let session_exp = now + session_ttl_seconds as i64;
+    let session_secret = resolve_session_signing_secret(&ctx)
+        .ok_or_else(|| Error::RustError("Session signing secret is not configured".to_string()))?;
+    let session_token = sign_viewer_session(
+        &ViewerSessionClaims {
+            sid: uuid::Uuid::new_v4().to_string(),
+            vid: visitor_id.clone(),
+            iat: now,
+            exp: session_exp,
+        },
+        &session_secret,
+    )?;
+
     let response = AccessResponse {
         success: true,
         error: None,
-        token: Some(expected_password),
+        token: None,
     };
 
     let json = serde_json::to_string(&response)?;
-    let headers = Headers::new();
+    let headers = build_cors_headers(&origin)?;
     headers.set("Content-Type", "application/json")?;
-    headers.set("Access-Control-Allow-Origin", &origin)?;
-    headers.set("Access-Control-Allow-Credentials", "true")?;
+    headers.set("Cache-Control", "no-store, must-revalidate")?;
+    append_cookie(
+        &headers,
+        &build_cookie(SESSION_COOKIE, &session_token, session_ttl_seconds, &req),
+    )?;
+    append_cookie(
+        &headers,
+        &build_cookie(
+            VISITOR_COOKIE,
+            &visitor_id,
+            VISITOR_COOKIE_TTL_SECONDS,
+            &req,
+        ),
+    )?;
+    append_cookie(&headers, &build_expired_cookie(LEGACY_ACCESS_COOKIE, &req))?;
 
     Ok(Response::ok(json)?.with_headers(headers))
 }

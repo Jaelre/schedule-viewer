@@ -75,7 +75,10 @@ SELECT
   action,
   COUNT(*) as occurrences,
   AVG(EXTRACT(EPOCH FROM (
-    LEAD(timestamp) OVER (PARTITION BY ip_address ORDER BY timestamp) - timestamp
+    LEAD(timestamp) OVER (
+      PARTITION BY COALESCE(visitor_id, ip_address)
+      ORDER BY timestamp
+    ) - timestamp
   ))) as avg_seconds_to_next_action
 FROM telemetry_events
 WHERE timestamp >= NOW() - INTERVAL '7 days'
@@ -84,7 +87,21 @@ ORDER BY occurrences DESC
 LIMIT 20;
 
 -- ============================================
--- 7. Data Quality Check
+-- 7. Doctor Icon Clicks (Last 30 Days)
+-- ============================================
+SELECT
+  value as doctor_id,
+  COUNT(*) as clicks,
+  COUNT(DISTINCT COALESCE(visitor_id, ip_address)) as unique_viewers
+FROM telemetry_events
+WHERE feature = 'doctor_icon'
+  AND action = 'click'
+  AND timestamp >= NOW() - INTERVAL '30 days'
+GROUP BY value
+ORDER BY clicks DESC;
+
+-- ============================================
+-- 8. Data Quality Check
 -- ============================================
 SELECT
   'Total Events' as metric,
@@ -123,7 +140,7 @@ FROM telemetry_events
 LIMIT 1;
 
 -- ============================================
--- 8. Check Cleanup Job Status
+-- 9. Check Cleanup Job Status
 -- ============================================
 SELECT
   j.jobid,

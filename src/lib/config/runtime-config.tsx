@@ -14,6 +14,7 @@ import { DEFAULT_DOCTOR_NAMES, getDoctorDisplayName } from '@/lib/doctor-names'
 import { getShiftColorFromConfig, DEFAULT_SHIFT_COLORS } from '@/lib/colors'
 import type { DoctorNamesDict } from '@/lib/doctor-names'
 import type { ShiftColorsData } from '@/lib/colors'
+import { resolveApiUrl, withViewerCredentials } from '@/lib/api-base'
 import type {
   RuntimeConfig,
   RuntimeConfigContextValue,
@@ -27,18 +28,19 @@ const DEFAULT_SHIFT_STYLING: ShiftStylingConfig = {}
 const DEFAULT_DOCTOR_PHOTOS: DoctorPhotosConfig = {
   photos: {},
 }
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
-
 const RuntimeConfigContext = createContext<RuntimeConfigContextValue | undefined>(undefined)
 
 async function fetchJson<T>(path: string): Promise<T> {
   const configName = path.replace(/\.json$/, '').replace('.config', '')
-  const response = await fetch(`${API_BASE_URL}/config/${configName}`, {
-    cache: 'no-store',
-    headers: {
-      Accept: 'application/json',
-    },
-  })
+  const response = await fetch(
+    resolveApiUrl(`/config/${configName}`),
+    withViewerCredentials({
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+  )
 
   if (!response.ok) {
     throw new Error(`Request failed with status ${response.status}`)

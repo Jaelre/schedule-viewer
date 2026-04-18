@@ -10,6 +10,7 @@ import { preparePeopleWithNames, calculateNameColumnWidth } from './utils'
 import { densityConfig, defaultNameColumnWidths, ROW_VIRTUALIZATION_THRESHOLD } from './types'
 import type { Density, ViewMode, PersonWithDisplay } from './types'
 import { useRuntimeConfig } from '@/lib/config/runtime-config'
+import { useTelemetry } from '@/app/providers'
 import { PhotoModal } from './PhotoModal'
 
 interface ScheduleGridProps {
@@ -32,6 +33,7 @@ export function ScheduleGrid({ data, density, codes, viewMode }: ScheduleGridPro
   } | null>(null)
 
   const { getDoctorDisplayName, doctorPhotos } = useRuntimeConfig()
+  const { track } = useTelemetry()
 
   // Prepare people data
   const peopleWithNames = useMemo(
@@ -57,6 +59,13 @@ export function ScheduleGrid({ data, density, codes, viewMode }: ScheduleGridPro
     if (!person.photoUrl) {
       return
     }
+
+    track({
+      feature: 'doctor_icon',
+      action: 'click',
+      value: person.id,
+      ym,
+    })
 
     setSelectedPhoto({
       src: person.photoUrl,

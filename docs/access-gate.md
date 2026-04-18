@@ -1,26 +1,26 @@
 # Access Gate Overview
 
 The schedule UI is protected by a lightweight password gate backed by the
-Cloudflare Worker. Clients request a short-lived token and keep it in browser
-storage, while the Worker validates the token before allowing access to the
-schedule API. This document explains how the flow works and how to configure it
-for local development and deployments.
+Cloudflare Worker. Successful logins now issue first-party cookies directly from
+the Worker: a short-lived authenticated session cookie plus a long-lived visitor
+cookie used for pseudonymous analytics correlation. This document explains the
+flow and how to configure it for local development and deployments.
 
-## Worker-managed client token flow
+## Worker-managed cookie flow
 
-1. Visitors land on `/` and see a password form when no valid access token is
-   present in `localStorage`.
+1. Visitors land on `/` and see a password form when no valid authenticated
+   session cookie is present.
 2. Submitting the form triggers a `POST` request to `/api/access` handled by the
    Worker.
 3. The Worker compares the submitted password against the `ACCESS_PASSWORD`
    environment variable using a timing-safe comparison.
-4. When the password matches, the Worker responds with a JSON payload containing
-   the access token and its expiration timestamp.
-5. The browser stores the token in `localStorage` and immediately retries
-   `/api/check-access` with an `Authorization: Bearer <token>` header.
-6. Valid tokens receive a 200 response and the app proceeds to fetch schedules;
-   invalid or expired tokens trigger a logout and the password form is displayed
-   again.
+4. When the password matches, the Worker signs a new browser session cookie and
+   refreshes the long-lived `schedule_viewer_vid` visitor cookie.
+5. The browser immediately retries `/api/check-access`; cookies are sent
+   automatically with same-origin requests.
+6. Valid sessions receive a 200 response and the app proceeds to fetch
+   schedules; invalid or expired sessions trigger a logout and the password form
+   is displayed again.
 
 If the password is wrong or the environment variable is not configured, the Worker
 returns an error and the password form surfaces the validation message.
@@ -40,34 +40,34 @@ For production deployments, follow the hosting provider's secret management flow
 set `ACCESS_PASSWORD` (for example, Cloudflare Pages project settings → Environment
 Variables).
 
-## Rotating the password
+## Rotating the session mechanism
 
-1. Update the `ACCESS_PASSWORD` environment variable to the new secret.
-2. Invalidate existing tokens by changing the password and redeploying. Users will
-   be forced to re-authenticate the next time the token is checked.
+Existing bearer/localStorage logins are intentionally no longer honored. That
+forces every active viewer back through `/api/access` without requiring a
+password change, which ensures the new first-party visitor tracking cookie is
+present for subsequent telemetry.
 
-## Telemetry and token reuse
+## Telemetry and cookie reuse
 
-Telemetry uploads reuse the same bearer token issued by `/api/access`. The
-browser attaches `Authorization: Bearer <token>` to calls against
-`/api/telemetry`, so rotating `ACCESS_PASSWORD` automatically invalidates both
-schedule reads and telemetry writes. Administrators can monitor or revoke access
-by:
+Telemetry uploads reuse the same authenticated session cookie issued by
+`/api/access`. The Worker also reads the long-lived visitor cookie so telemetry
+events can carry a stable first-party visitor id. Administrators can monitor or
+revoke access by:
 
-- Rotating `ACCESS_PASSWORD`, which forces the client helper to request a new
-  token before sending additional events.
+- Rotating `ACCESS_PASSWORD`, which invalidates the session signing fallback and
+  forces re-authentication.
 - Watching Worker logs (`wrangler tail`) for anomalous telemetry volume tied to a
-  specific token.
+  specific visitor or session id.
 - Auditing persisted batches as described in [docs/telemetry.md](telemetry.md).
 
 ## Troubleshooting
 
 | Symptom | Resolution |
 | --- | --- |
-| Password form keeps showing even after entering the correct password | Ensure `ACCESS_PASSWORD` is set and matches what you expect. Check Worker logs for `/api/access` responses. |
+| Password form keeps showing even after entering the correct password | Ensure `ACCESS_PASSWORD` is set and matches what you expect. Check Worker logs for `/api/access` responses and confirm the browser accepts first-party cookies for the site. |
 | API route returns a 500 error stating "Password non configurata." | `ACCESS_PASSWORD` is missing in the environment. Add it to `.env.local` (development) or your deployment's environment variables. |
-| You need to reset access for everyone | Rotate the password and inform users to clear `localStorage` entries for the access token, or wait for the previous token to expire. |
+| You need to reset access for everyone | Redeploy the new worker/session flow or rotate `ACCESS_PASSWORD`; clients will be forced to re-authenticate without needing a manual localStorage cleanup. |
 
 These checks ensure that the worker remains the single source of truth for
 password validation and that every downstream request proves authorization via
-its `Authorization` header.
+its first-party session cookie.

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react'
 import { submitFeedback } from '@/lib/api-client'
 import { useTelemetry } from '@/app/providers'
+import { getClientTelemetryContext } from '@/lib/telemetry'
 import { useSearchParams } from 'next/navigation'
 
 interface FeedbackModalProps {
@@ -75,11 +76,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
       try {
         const metadata = {
           ym: currentYM,
-          url: window.location.href,
-          viewport: { width: window.innerWidth, height: window.innerHeight },
-          language: navigator.language,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          referrer: document.referrer || undefined,
+          ...getClientTelemetryContext(),
         }
 
         await submitFeedback({

@@ -20,13 +20,18 @@ bucket_name = "schedule-viewer-telemetry"
 binding = "FEEDBACK_BUCKET"
 bucket_name = "schedule-viewer-feedback"
 
+[triggers]
+crons = ["15 1 * * *"]
+
 [vars]
 API_BASE_URL = "https://api.metricaid.com"
 API_TIMEOUT_MS = "8000"
 CACHE_TTL_SECONDS = "900"
+SESSION_TTL_SECONDS = "2592000"
 CONFIG_CACHE_TTL_SECONDS = "6000"
 TELEMETRY_LOG_ONLY = "false"
 TELEMETRY_ARCHIVE_TO_R2 = "true"
+TELEMETRY_ARCHIVE_MODE = "daily"
 SUPABASE_TELEMETRY_TABLE = "telemetry_events"
 FEEDBACK_ARCHIVE_TO_R2 = "true"
 SUPABASE_FEEDBACK_TABLE = "feedback_submissions"
@@ -53,9 +58,11 @@ bucket_name = "schedule-viewer-feedback-preview"
 API_BASE_URL = "https://api.metricaid.com"
 API_TIMEOUT_MS = "8000"
 CACHE_TTL_SECONDS = "300"
+SESSION_TTL_SECONDS = "2592000"
 CONFIG_CACHE_TTL_SECONDS = "300"
 TELEMETRY_LOG_ONLY = "false"
 TELEMETRY_ARCHIVE_TO_R2 = "true"
+TELEMETRY_ARCHIVE_MODE = "daily"
 SUPABASE_TELEMETRY_TABLE = "telemetry_events"
 FEEDBACK_ARCHIVE_TO_R2 = "true"
 SUPABASE_FEEDBACK_TABLE = "feedback_submissions"
@@ -64,9 +71,11 @@ SUPABASE_FEEDBACK_TABLE = "feedback_submissions"
 # - Local dev: .dev.vars (encrypted with git-crypt)
 # - Preview: wrangler secret put API_TOKEN --env preview
 #            wrangler secret put ACCESS_PASSWORD --env preview
+#            wrangler secret put SESSION_SECRET --env preview
 #            wrangler secret put SUPABASE_URL --env preview
 #            wrangler secret put SUPABASE_SERVICE_KEY --env preview
 # - Production: wrangler secret put API_TOKEN
 #               wrangler secret put ACCESS_PASSWORD
+#               wrangler secret put SESSION_SECRET
 #               wrangler secret put SUPABASE_URL
 #               wrangler secret put SUPABASE_SERVICE_KEY

@@ -1,9 +1,7 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
+import { resolveApiUrl, withViewerCredentials } from './api-base'
 
 function resolveEndpoint(path: string) {
-  const normalizedBase = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  return `${normalizedBase}${normalizedPath}`
+  return resolveApiUrl(path)
 }
 
 export type TelemetryEventPayload = {
@@ -13,14 +11,16 @@ export type TelemetryEventPayload = {
   [key: string]: unknown
 }
 
-interface EnrichedTelemetryEvent extends TelemetryEventPayload {
-  timestamp: string
+export interface ClientTelemetryContext {
   url: string
-  userAgent?: string
   language?: string
   viewport?: { width: number; height: number }
   timezone?: string
   referrer?: string
+}
+
+interface EnrichedTelemetryEvent extends TelemetryEventPayload, ClientTelemetryContext {
+  timestamp: string
 }
 
 const BATCH_INTERVAL = 5_000
@@ -33,6 +33,44 @@ export type TelemetryClient = {
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined'
+}
+
+function getCurrentPath(): string {
+  if (!isBrowser()) return '/'
+
+  const { pathname, search } = window.location
+  return `${pathname}${search}`
+}
+
+function getSameOriginReferrerPath(): string | undefined {
+  if (!isBrowser() || !document.referrer) {
+    return undefined
+  }
+
+  try {
+    const referrerUrl = new URL(document.referrer)
+    if (referrerUrl.origin !== window.location.origin) {
+      return undefined
+    }
+
+    return `${referrerUrl.pathname}${referrerUrl.search}`
+  } catch {
+    return undefined
+  }
+}
+
+export function getClientTelemetryContext(): ClientTelemetryContext {
+  if (!isBrowser()) {
+    return { url: '/' }
+  }
+
+  return {
+    url: getCurrentPath(),
+    language: navigator.language,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    referrer: getSameOriginReferrerPath(),
+  }
 }
 
 class InternalTelemetryClient implements TelemetryClient {
@@ -58,12 +96,7 @@ class InternalTelemetryClient implements TelemetryClient {
     const enrichedEvent: EnrichedTelemetryEvent = {
       ...event,
       timestamp: new Date().toISOString(),
-      url: window.location.href,
-      userAgent: navigator.userAgent,
-      language: navigator.language,
-      viewport: { width: window.innerWidth, height: window.innerHeight },
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      referrer: document.referrer || undefined,
+      ...getClientTelemetryContext(),
     }
 
     this.queue.push(enrichedEvent)
@@ -100,14 +133,11 @@ class InternalTelemetryClient implements TelemetryClient {
   private sendBatch(events: EnrichedTelemetryEvent[]) {
     if (!isBrowser()) return
 
-    const token = this.getToken()
-
-    // Try sendBeacon first (doesn't support custom headers, so include token in body)
+    // Try sendBeacon first; the worker authenticates via the first-party session cookie.
     const canUseBeacon = typeof navigator.sendBeacon === 'function'
     if (canUseBeacon) {
       const beaconBody = JSON.stringify({
         events,
-        authToken: token ?? undefined,
         flush: true, // Force immediate flush in serverless environment
       })
       const beaconSent = navigator.sendBeacon(ENDPOINT, beaconBody)
@@ -116,34 +146,22 @@ class InternalTelemetryClient implements TelemetryClient {
       }
     }
 
-    // Fallback to fetch with Authorization header (preferred for foreground requests)
-    const headers: HeadersInit = { 'Content-Type': 'application/json' }
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
     const fetchBody = JSON.stringify({
       events,
       flush: true, // Force immediate flush in serverless environment
     })
 
-    fetch(ENDPOINT, {
-      method: 'POST',
-      headers,
-      body: fetchBody,
-      keepalive: true,
-    }).catch(() => {
+    fetch(
+      ENDPOINT,
+      withViewerCredentials({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: fetchBody,
+        keepalive: true,
+      })
+    ).catch(() => {
       // Swallow network errors; telemetry should never block the UI.
     })
-  }
-
-  private getToken(): string | null {
-    try {
-      return window.localStorage.getItem('schedule_viewer_token')
-    } catch (error) {
-      console.warn('Unable to access schedule_viewer_token', error)
-      return null
-    }
   }
 }
 

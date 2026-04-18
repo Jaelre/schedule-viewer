@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS telemetry_events (
   -- Server metadata
   ip_address TEXT,
   region TEXT,
+  visitor_id TEXT,
+  session_id TEXT,
   stream TEXT,
 
   -- System
@@ -42,6 +44,8 @@ CREATE INDEX idx_telemetry_feature_action ON telemetry_events(feature, action);
 CREATE INDEX idx_telemetry_created_at ON telemetry_events(created_at DESC);
 CREATE INDEX idx_telemetry_ym ON telemetry_events(ym) WHERE ym IS NOT NULL;
 CREATE INDEX idx_telemetry_action ON telemetry_events(action);
+CREATE INDEX idx_telemetry_visitor_id ON telemetry_events(visitor_id) WHERE visitor_id IS NOT NULL;
+CREATE INDEX idx_telemetry_session_id ON telemetry_events(session_id) WHERE session_id IS NOT NULL;
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE telemetry_events ENABLE ROW LEVEL SECURITY;
@@ -68,4 +72,6 @@ COMMENT ON TABLE telemetry_events IS 'Telemetry events from schedule-viewer appl
 COMMENT ON COLUMN telemetry_events.feature IS 'Feature/component name (e.g., schedule_app, month_nav)';
 COMMENT ON COLUMN telemetry_events.action IS 'Action performed (e.g., page_view, change_month)';
 COMMENT ON COLUMN telemetry_events.ym IS 'Month identifier for schedule views (YYYY-MM format)';
+COMMENT ON COLUMN telemetry_events.visitor_id IS 'Stable first-party viewer identifier from the long-lived tracking cookie';
+COMMENT ON COLUMN telemetry_events.session_id IS 'Rotating browser session identifier from the authenticated viewer session cookie';
 COMMENT ON COLUMN telemetry_events.stream IS 'Optional stream identifier for event batching';

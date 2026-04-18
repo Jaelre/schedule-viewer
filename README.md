@@ -10,7 +10,7 @@ Monthly schedule explorer for emergency department shifts. The UI is built with 
 - Cloudflare Worker proxies all data access, injects secrets, retries upstream failures and keeps a short-lived in-memory cache.
 - Client refreshes data every 10 minutes and surfaces clear loading/error states.
 - `/pdf` route genera una versione scaricabile in PDF direttamente nel browser con un generatore personalizzato.
-- Schedule access is gated by a worker-managed password exchange: clients `POST /api/access`, stash the returned token in `localStorage` and send it as an `Authorization` header to `/api/check-access` before fetching schedules (see [docs/access-gate.md](docs/access-gate.md#worker-managed-client-token-flow)).
+- Schedule access is gated by a worker-managed password exchange: successful `POST /api/access` requests now mint first-party cookies for both the authenticated browser session and a long-lived pseudonymous visitor id used by telemetry (see [docs/access-gate.md](docs/access-gate.md#worker-managed-cookie-flow)).
 
 ## Architecture at a Glance
 - **Frontend**: Next.js App Router (static export) with Tailwind CSS and shadcn/ui primitives, TanStack Query for data fetching/cache and TanStack Virtual for row virtualisation.
@@ -82,7 +82,7 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
    echo 'ACCESS_PASSWORD="choose-a-strong-password"' >> .env.local
    ```
 
-   Refer to [docs/access-gate.md](docs/access-gate.md#worker-managed-client-token-flow) for details on how the token-based access gate works.
+   Refer to [docs/access-gate.md](docs/access-gate.md#worker-managed-cookie-flow) for details on how the cookie-based access gate works.
 
 4. (Optional) adjust local dictionaries and styling overrides:
    - Edit the JSON files in `src/config/*.json`. Those files are the source of truth and are mirrored to the Worker/R2 config path.
@@ -151,9 +151,11 @@ After unlocking, git-crypt works transparently - files are automatically encrypt
 
 ## Telemetry
 
-- **Client helper**: A lightweight telemetry client queues structured events in memory and sends them to the Worker endpoint exposed via `NEXT_PUBLIC_TELEMETRY_ENDPOINT`. It wraps `navigator.sendBeacon` when available, falling back to authenticated `fetch` requests when the page is in the foreground.
+- **Client helper**: A lightweight telemetry client queues structured events in memory and sends them to the Worker endpoint exposed via `NEXT_PUBLIC_TELEMETRY_ENDPOINT`. It wraps `navigator.sendBeacon` when available, falling back to credentialed `fetch` requests when the page is in the foreground.
 - **Batching**: Events are appended to an in-memory queue and flushed when either 20 events accumulate or 5 seconds elapse. Visibility changes (`visibilitychange`, `beforeunload`) trigger an immediate flush so that navigation away from the page does not drop data.
-- **Authentication**: Telemetry requests reuse the access-token issued by `/api/access`, attaching it as an `Authorization: Bearer <token>` header. No additional secrets are stored in the browser, so rotating the password gate token immediately covers telemetry traffic as well.
+- **Authentication**: Telemetry requests reuse the authenticated first-party session cookie issued by `/api/access`. The Worker also reads the long-lived `schedule_viewer_vid` cookie so returning viewers can be counted without relying on IP address churn. Existing bearer-token logins are intentionally flushed by this rollout so active viewers re-enter through the cookie flow.
+- **Scope**: Telemetry is limited to explicit in-site actions plus first-party page context. The stored `url` and `referrer` values are sanitized to same-site paths rather than full cross-site URLs.
+- **Archival**: Supabase remains real-time. R2 archival is now exported once per day from Supabase via the worker cron, instead of writing an R2 object for every telemetry flush.
 - **Environment**: Configure `NEXT_PUBLIC_TELEMETRY_ENDPOINT` (defaults to `/api/telemetry`) and optionally override `TELEMETRY_MAX_BATCH_SIZE` / `TELEMETRY_FLUSH_INTERVAL_MS` on the Worker to tune throughput. See [docs/telemetry.md](docs/telemetry.md) for event schemas and operational guidance.
 
 ## API Contract

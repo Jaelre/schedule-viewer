@@ -31,7 +31,10 @@ pub struct RawShiftDisplayConfig {
 
 #[derive(Deserialize, Default, Serialize)]
 pub struct ShiftStylingConfig {
-    #[serde(rename = "conditionalUnderline", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "conditionalUnderline",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub conditional_underline: Option<ConditionalUnderline>,
 }
 
@@ -152,9 +155,9 @@ async fn fetch_config_from_r2(
 ) -> Result<String> {
     // Check cache first
     {
-        let cache = CONFIG_CACHE.read().map_err(|e| {
-            Error::RustError(format!("Failed to acquire cache read lock: {}", e))
-        })?;
+        let cache = CONFIG_CACHE
+            .read()
+            .map_err(|e| Error::RustError(format!("Failed to acquire cache read lock: {}", e)))?;
 
         if let Some(cached) = cache.get(config_key) {
             let age_seconds = Utc::now()
@@ -162,10 +165,18 @@ async fn fetch_config_from_r2(
                 .num_seconds();
 
             if age_seconds >= 0 && (age_seconds as u64) < cache_ttl_seconds {
-                console_log!("Config cache hit for {}: {} seconds old", config_key, age_seconds);
+                console_log!(
+                    "Config cache hit for {}: {} seconds old",
+                    config_key,
+                    age_seconds
+                );
                 return Ok(cached.json.clone());
             } else {
-                console_log!("Config cache miss for {}: {} seconds old (stale)", config_key, age_seconds);
+                console_log!(
+                    "Config cache miss for {}: {} seconds old (stale)",
+                    config_key,
+                    age_seconds
+                );
             }
         } else {
             console_log!("Config cache miss for {}: not found", config_key);
@@ -178,7 +189,8 @@ async fn fetch_config_from_r2(
 
     let bytes = match object {
         Some(obj) => {
-            let body = obj.body()
+            let body = obj
+                .body()
                 .ok_or_else(|| Error::RustError(format!("Config {} has no body", config_key)))?;
             body.bytes().await?
         }
@@ -202,9 +214,9 @@ async fn fetch_config_from_r2(
 
     // Update cache
     {
-        let mut cache = CONFIG_CACHE.write().map_err(|e| {
-            Error::RustError(format!("Failed to acquire cache write lock: {}", e))
-        })?;
+        let mut cache = CONFIG_CACHE
+            .write()
+            .map_err(|e| Error::RustError(format!("Failed to acquire cache write lock: {}", e)))?;
 
         cache.insert(
             config_key.to_string(),
@@ -225,11 +237,13 @@ pub async fn get_shift_display_config(
 ) -> Result<ShiftDisplayConfig> {
     let json_str = fetch_config_from_r2(bucket, CONFIG_DISPLAY, cache_ttl_seconds).await?;
 
-    let raw: RawShiftDisplayConfig = serde_json::from_str(&json_str)
-        .unwrap_or_else(|e| {
-            console_log!("Failed to parse shift display config: {:?}, using defaults", e);
-            RawShiftDisplayConfig::default()
-        });
+    let raw: RawShiftDisplayConfig = serde_json::from_str(&json_str).unwrap_or_else(|e| {
+        console_log!(
+            "Failed to parse shift display config: {:?}, using defaults",
+            e
+        );
+        RawShiftDisplayConfig::default()
+    });
 
     Ok(ShiftDisplayConfig::from(raw))
 }
@@ -241,11 +255,13 @@ pub async fn get_shift_styling_config(
 ) -> Result<ShiftStylingConfig> {
     let json_str = fetch_config_from_r2(bucket, CONFIG_STYLING, cache_ttl_seconds).await?;
 
-    let config: ShiftStylingConfig = serde_json::from_str(&json_str)
-        .unwrap_or_else(|e| {
-            console_log!("Failed to parse shift styling config: {:?}, using defaults", e);
-            ShiftStylingConfig::default()
-        });
+    let config: ShiftStylingConfig = serde_json::from_str(&json_str).unwrap_or_else(|e| {
+        console_log!(
+            "Failed to parse shift styling config: {:?}, using defaults",
+            e
+        );
+        ShiftStylingConfig::default()
+    });
 
     Ok(config)
 }
@@ -280,7 +296,10 @@ pub async fn handle_get_config(
         Ok(json_str) => {
             let headers = Headers::new();
             headers.set("Content-Type", "application/json")?;
-            headers.set("Cache-Control", &format!("public, max-age={}", cache_ttl_seconds))?;
+            headers.set(
+                "Cache-Control",
+                &format!("public, max-age={}", cache_ttl_seconds),
+            )?;
             headers.set("Access-Control-Allow-Origin", "*")?;
 
             Ok(Response::ok(json_str)?.with_headers(headers))

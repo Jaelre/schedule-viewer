@@ -50,23 +50,23 @@ The static site consumes the Worker for everything non-static, so no additional 
 
 ---
 
-## Worker Access Token Contract
+## Worker Access Contract
 
 The Worker exposes the following endpoints:
 
-- `POST /api/access` – accepts `{ "password": "..." }` and returns `{ "success": true, "token": "..." }` when the password matches `ACCESS_PASSWORD`.
-- `GET /api/check-access` – validates the caller by checking the `Authorization: Bearer <token>` header (and, for legacy clients, the old cookie).
-- `GET /api/shifts?ym=YYYY-MM` – returns the month schedule, enforcing the same bearer-token check.
+- `POST /api/access` – accepts `{ "password": "..." }`, validates it against `ACCESS_PASSWORD`, and issues first-party session/visitor cookies when successful.
+- `GET /api/check-access` – validates the caller by checking the authenticated session cookie.
+- `GET /api/shifts?ym=YYYY-MM` – returns the month schedule, enforcing the same session check.
 
-The static frontend stores the returned token (currently identical to the password) and includes it in the `Authorization` header for subsequent requests. Any alternative frontend or integration must follow the same contract: obtain the token via `/api/access`, then send it as a bearer token to `check-access` and `shifts`.
+The static frontend now relies on worker-issued cookies rather than storing a bearer token in browser storage. Any alternative frontend or integration must follow the same contract: obtain access via `/api/access`, preserve the returned cookies, and send them back to `check-access` and `shifts`.
 
 ---
 
 ## Alternative Hosting Notes
 
-You are free to host the static export anywhere, provided it can call the Worker over HTTPS and attach the bearer token header. Typical options include:
+You are free to host the static export anywhere, provided it can call the Worker over HTTPS and preserve the worker-issued first-party cookies. Typical options include:
 
 - **Vercel / Netlify / S3 + CDN**: run `npm run build`, upload `out/`, and configure public environment variables so the build knows which Worker URL to call. Ensure the Worker domain is allowed by your host's CORS settings if you introduce a custom domain.
-- **Internal portals**: bundle the static assets into the existing site but preserve the fetches to the Worker and forward the bearer token header unmodified.
+- **Internal portals**: bundle the static assets into the existing site but preserve the fetches to the Worker and allow the session cookies to flow unmodified.
 
-Regardless of host, never expose the MetricAid `API_TOKEN` to the frontend. All secrets stay inside the Worker, and the only shared secret is the password/token pair managed through `ACCESS_PASSWORD`.
+Regardless of host, never expose the MetricAid `API_TOKEN` to the frontend. All secrets stay inside the Worker, and the only shared secret is the password managed through `ACCESS_PASSWORD`.

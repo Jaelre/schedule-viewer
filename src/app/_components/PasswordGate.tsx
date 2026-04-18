@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type FormEvent, type ReactNode } from 'react'
 import { useTelemetry } from '@/app/providers'
+import { resolveApiUrl, withViewerCredentials } from '@/lib/api-base'
 
 interface PasswordGateProps {
   children: ReactNode
@@ -16,31 +17,23 @@ export function PasswordGate({ children }: PasswordGateProps) {
   const { track } = useTelemetry()
 
   useEffect(() => {
-    // Check if we have a token in localStorage
+    try {
+      window.localStorage.removeItem('schedule_viewer_token')
+    } catch {
+      // Ignore storage access issues; session auth no longer relies on localStorage.
+    }
+
     const checkAccess = async () => {
       try {
-        const token = localStorage.getItem('schedule_viewer_token')
-
-        if (!token) {
-          setHasAccess(false)
-          setIsChecking(false)
-          return
-        }
-
-        // Verify token with server
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-        const response = await fetch(`${apiUrl}/check-access`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        })
+        const response = await fetch(
+          resolveApiUrl('/check-access'),
+          withViewerCredentials()
+        )
 
         if (response.ok) {
           const data = await response.json()
           setHasAccess(data.success === true)
         } else {
-          // Invalid token, clear it
-          localStorage.removeItem('schedule_viewer_token')
           setHasAccess(false)
         }
       } catch {
@@ -73,22 +66,21 @@ export function PasswordGate({ children }: PasswordGateProps) {
     setError('')
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${apiUrl}/access`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password: trimmedPassword }),
-      })
+      const response = await fetch(
+        resolveApiUrl('/access'),
+        withViewerCredentials({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ password: trimmedPassword }),
+        })
+      )
 
       if (response.ok) {
         const data = await response.json()
 
-        if (data.success && data.token) {
-          // Store token in localStorage
-          localStorage.setItem('schedule_viewer_token', data.token)
-
+        if (data.success) {
           setPassword('')
           setError('')
           setHasAccess(true)
