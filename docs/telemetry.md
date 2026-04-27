@@ -23,7 +23,8 @@ Each browser event is enqueued as a flat first-party analytics object:
     "width": 1440,
     "height": 900
   },
-  "timezone": "Europe/Rome"
+  "timezone": "Europe/Rome",
+  "schedule_viewer_release": "2026.04.28"
 }
 ```
 
@@ -32,6 +33,7 @@ Each browser event is enqueued as a flat first-party analytics object:
 - `url` – Sanitized in-site path plus query string; never a full cross-site URL.
 - `referrer` – Previous in-site path when available; cross-site referrers are dropped.
 - `language`, `viewport`, `timezone` – Environment context useful for UX analysis.
+- `schedule_viewer_release` – Optional release identifier supplied by `NEXT_PUBLIC_SCHEDULE_VIEWER_RELEASE`.
 
 ## Batching and flush thresholds
 

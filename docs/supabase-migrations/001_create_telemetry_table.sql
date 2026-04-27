@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS telemetry_events (
   visitor_id TEXT,
   session_id TEXT,
   stream TEXT,
+  schedule_viewer_release TEXT,
 
   -- System
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -46,6 +47,7 @@ CREATE INDEX idx_telemetry_ym ON telemetry_events(ym) WHERE ym IS NOT NULL;
 CREATE INDEX idx_telemetry_action ON telemetry_events(action);
 CREATE INDEX idx_telemetry_visitor_id ON telemetry_events(visitor_id) WHERE visitor_id IS NOT NULL;
 CREATE INDEX idx_telemetry_session_id ON telemetry_events(session_id) WHERE session_id IS NOT NULL;
+CREATE INDEX idx_telemetry_schedule_viewer_release ON telemetry_events(schedule_viewer_release) WHERE schedule_viewer_release IS NOT NULL;
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE telemetry_events ENABLE ROW LEVEL SECURITY;
@@ -75,3 +77,4 @@ COMMENT ON COLUMN telemetry_events.ym IS 'Month identifier for schedule views (Y
 COMMENT ON COLUMN telemetry_events.visitor_id IS 'Stable first-party viewer identifier from the long-lived tracking cookie';
 COMMENT ON COLUMN telemetry_events.session_id IS 'Rotating browser session identifier from the authenticated viewer session cookie';
 COMMENT ON COLUMN telemetry_events.stream IS 'Optional stream identifier for event batching';
+COMMENT ON COLUMN telemetry_events.schedule_viewer_release IS 'Optional release identifier supplied by the schedule-viewer telemetry emitter';

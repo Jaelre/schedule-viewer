@@ -737,7 +737,7 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
             let supabase_payload: Vec<serde_json::Value> = events
                 .iter()
                 .map(|event| {
-                    serde_json::json!({
+                    let mut row = serde_json::json!({
                         "timestamp": event.fields.get("timestamp").and_then(|v| v.as_str()),
                         "feature": event.fields.get("feature").and_then(|v| v.as_str()),
                         "action": event.fields.get("action").and_then(|v| v.as_str()),
@@ -762,7 +762,23 @@ async fn handle_telemetry(mut req: Request, ctx: RouteContext<()>) -> Result<Res
                         "timezone": event.fields.get("timezone").and_then(|v| v.as_str()),
                         "referrer": event.fields.get("referrer").and_then(|v| v.as_str()),
                         "stream": event.metadata.stream.as_deref(),
-                    })
+                    });
+
+                    if let Some(release) = event
+                        .fields
+                        .get("schedule_viewer_release")
+                        .and_then(|v| v.as_str())
+                        .filter(|value| !value.trim().is_empty())
+                    {
+                        row.as_object_mut()
+                            .expect("telemetry row is a JSON object")
+                            .insert(
+                                "schedule_viewer_release".to_string(),
+                                serde_json::Value::String(release.trim().to_string()),
+                            );
+                    }
+
+                    row
                 })
                 .collect();
 

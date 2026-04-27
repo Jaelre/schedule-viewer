@@ -17,6 +17,7 @@ export interface ClientTelemetryContext {
   viewport?: { width: number; height: number }
   timezone?: string
   referrer?: string
+  schedule_viewer_release?: string
 }
 
 interface EnrichedTelemetryEvent extends TelemetryEventPayload, ClientTelemetryContext {
@@ -26,6 +27,8 @@ interface EnrichedTelemetryEvent extends TelemetryEventPayload, ClientTelemetryC
 const BATCH_INTERVAL = 5_000
 const MAX_BATCH_SIZE = 25
 const ENDPOINT = resolveEndpoint('/telemetry')
+const SCHEDULE_VIEWER_RELEASE =
+  process.env.NEXT_PUBLIC_SCHEDULE_VIEWER_RELEASE?.trim() || undefined
 
 export type TelemetryClient = {
   track: (event: TelemetryEventPayload) => void
@@ -64,13 +67,19 @@ export function getClientTelemetryContext(): ClientTelemetryContext {
     return { url: '/' }
   }
 
-  return {
+  const context: ClientTelemetryContext = {
     url: getCurrentPath(),
     language: navigator.language,
     viewport: { width: window.innerWidth, height: window.innerHeight },
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     referrer: getSameOriginReferrerPath(),
   }
+
+  if (SCHEDULE_VIEWER_RELEASE) {
+    context.schedule_viewer_release = SCHEDULE_VIEWER_RELEASE
+  }
+
+  return context
 }
 
 class InternalTelemetryClient implements TelemetryClient {
