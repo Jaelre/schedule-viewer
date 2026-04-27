@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy": "wrangler deploy pages out"
+    "deploy": "wrangler pages deploy out --project-name schedule-viewer"
   },
   "repository": {
     "type": "git",
