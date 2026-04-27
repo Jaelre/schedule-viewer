@@ -43,7 +43,7 @@ This note summarizes how telemetry events land in Supabase so another agent can 
 Indexes: timestamp desc, feature+action, created_at desc, ym (partial), action, visitor_id (partial), session_id (partial), schedule_viewer_release (partial). RLS: service_role full access; authenticated users can `SELECT`.
 
 ## Event shape and mapping
-- Client payload (`src/lib/telemetry.ts`) enriches each event with: `timestamp`, sanitized same-site `url`, `language`, `viewport.{width,height}`, `timezone`, same-site `referrer`, optional `schedule_viewer_release` from `NEXT_PUBLIC_SCHEDULE_VIEWER_RELEASE`, plus the caller-supplied fields (`feature`, `action`, optional `value`, `ym`, etc.).
+- Client payload (`src/lib/telemetry.ts`) enriches each event with: `timestamp`, sanitized same-site `url`, `language`, `viewport.{width,height}`, `timezone`, same-site `referrer`, `schedule_viewer_release` from `NEXT_PUBLIC_SCHEDULE_VIEWER_RELEASE` or the build commit SHA, plus the caller-supplied fields (`feature`, `action`, optional `value`, `ym`, etc.).
 - Worker (`worker/src/lib.rs`) flattens the event JSON into the columns above. Missing fields become NULL; `value` is coerced to string if it is not already a string.
 - The worker also injects `visitor_id` and `session_id` from the signed session cookie, so unique-visitor stats can use first-party ids instead of IP address alone.
 - Metadata not written to Supabase: `received_at` (Worker-only) and the full nested objects beyond the mapped fields.

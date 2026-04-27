@@ -4,7 +4,7 @@
   "description": "Monthly Shift Viewer - Read-only shift schedule visualization",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NEXT_PUBLIC_SCHEDULE_VIEWER_RELEASE=${NEXT_PUBLIC_SCHEDULE_VIEWER_RELEASE:-$(git rev-parse --short HEAD)} next build",
     "start": "next start",
     "lint": "next lint",
     "deploy": "wrangler pages deploy out --project-name schedule-viewer"

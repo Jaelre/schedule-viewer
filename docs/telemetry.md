@@ -33,7 +33,7 @@ Each browser event is enqueued as a flat first-party analytics object:
 - `url` – Sanitized in-site path plus query string; never a full cross-site URL.
 - `referrer` – Previous in-site path when available; cross-site referrers are dropped.
 - `language`, `viewport`, `timezone` – Environment context useful for UX analysis.
-- `schedule_viewer_release` – Optional release identifier supplied by `NEXT_PUBLIC_SCHEDULE_VIEWER_RELEASE`.
+- `schedule_viewer_release` – Release identifier supplied by `NEXT_PUBLIC_SCHEDULE_VIEWER_RELEASE`; when unset, `npm run build` injects the current Git commit SHA.
 
 ## Batching and flush thresholds
 
