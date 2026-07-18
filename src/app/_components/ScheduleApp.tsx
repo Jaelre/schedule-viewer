@@ -16,6 +16,66 @@ import { useTelemetry } from '@/app/providers'
 import { ViewToggle } from './ViewToggle'
 import { LegendButton } from './LegendButton'
 
+const DENSITY_COOKIE_KEY = 'schedule-density'
+const VIEW_MODE_COOKIE_KEY = 'schedule-view-mode'
+const VIEW_USAGE_STORAGE_KEY = 'schedule-view-usage'
+const PREFERENCE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
+
+function isDensity(value: string): value is Density {
+  return value === 'extra-compact' || value === 'compact' || value === 'comfortable'
+}
+
+function isViewMode(value: string): value is ViewMode {
+  return value === 'people' || value === 'shifts'
+}
+
+function getCookieValue(key: string): string | null {
+  if (typeof document === 'undefined') return null
+
+  const encodedKey = encodeURIComponent(key)
+  const cookie = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${encodedKey}=`))
+
+  if (!cookie) return null
+  return decodeURIComponent(cookie.split('=').slice(1).join('='))
+}
+
+function setCookieValue(key: string, value: string) {
+  if (typeof document === 'undefined') return
+
+  document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; path=/; max-age=${PREFERENCE_COOKIE_MAX_AGE}; samesite=lax`
+}
+
+function getDensityFromCookie(): Density | null {
+  const value = getCookieValue(DENSITY_COOKIE_KEY)
+  return value && isDensity(value) ? value : null
+}
+
+function getViewModeFromCookie(): ViewMode | null {
+  const value = getCookieValue(VIEW_MODE_COOKIE_KEY)
+  return value && isViewMode(value) ? value : null
+}
+
+function incrementViewUsage(viewMode: ViewMode): number | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = window.localStorage.getItem(VIEW_USAGE_STORAGE_KEY)
+    const usage = raw ? (JSON.parse(raw) as Partial<Record<ViewMode, number>>) : {}
+    const nextCount = (usage[viewMode] || 0) + 1
+    const nextUsage = {
+      people: viewMode === 'people' ? nextCount : usage.people || 0,
+      shifts: viewMode === 'shifts' ? nextCount : usage.shifts || 0,
+    }
+
+    window.localStorage.setItem(VIEW_USAGE_STORAGE_KEY, JSON.stringify(nextUsage))
+    return nextCount
+  } catch {
+    return null
+  }
+}
+
 interface ScheduleAppProps {
   basePath?: string
 }
@@ -35,6 +95,20 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
   const { data, isLoading, error, refetch } = useMonthShifts(currentYM)
   const { track } = useTelemetry()
 
+  useEffect(() => {
+    const cookieDensity = getDensityFromCookie()
+    if (cookieDensity) {
+      setDensity(cookieDensity)
+      track({ feature: 'density_toggle', action: 'hydrate_density_preference', value: cookieDensity })
+    }
+
+    const cookieViewMode = getViewModeFromCookie()
+    if (cookieViewMode) {
+      setViewMode(cookieViewMode)
+      track({ feature: 'view_toggle', action: 'hydrate_view_mode_preference', value: cookieViewMode })
+    }
+  }, [track])
+
   // Track page view on mount
   useEffect(() => {
     track({ feature: 'schedule_app', action: 'page_view', value: currentYM })
@@ -52,12 +126,22 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
     refetch()
   }, [currentYM, refetch, track])
 
-  const densityChangeHandler = useCallback(
-    (newDensity: Density) => {
-      setDensity(newDensity)
-    },
-    []
-  )
+  const densityChangeHandler = useCallback((newDensity: Density) => {
+    setDensity(newDensity)
+    setCookieValue(DENSITY_COOKIE_KEY, newDensity)
+    track({ feature: 'density_toggle', action: 'persist_density_preference', value: newDensity })
+  }, [track])
+
+  const viewModeChangeHandler = useCallback((newMode: ViewMode) => {
+    setViewMode(newMode)
+    setCookieValue(VIEW_MODE_COOKIE_KEY, newMode)
+    track({ feature: 'view_toggle', action: 'persist_view_mode_preference', value: newMode })
+
+    const usageCount = incrementViewUsage(newMode)
+    if (usageCount !== null) {
+      track({ feature: 'view_toggle', action: 'long_term_usage_count', value: `${newMode}:${usageCount}` })
+    }
+  }, [track])
 
   if (isConfigLoading) {
     return (
@@ -79,22 +163,20 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
           </div>
         )}
 
-        {/* New Responsive Top Bar */}
         <div className="flex flex-col bg-card border-b border-border px-4 py-2 gap-2">
-          {/* Row 1: Nav (Left) + Desktop Controls (Center/Right) + Mobile Feedback (Right) */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex-shrink-0">
               <MonthNav currentYM={currentYM} basePath={basePath} />
             </div>
 
-            {/* Desktop Controls (> 640px) */}
             <div className="hidden sm:flex items-center gap-3">
               <ViewToggle
                 viewMode={viewMode}
-                onToggle={setViewMode}
+                onToggle={viewModeChangeHandler}
                 variant="responsive"
               />
               <DensityToggle
+                density={density}
                 onDensityChange={densityChangeHandler}
                 variant="responsive"
               />
@@ -102,21 +184,20 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
               <FeedbackButton />
             </div>
 
-            {/* Mobile Feedback (< 640px) */}
             <div className="sm:hidden">
               <FeedbackButton />
             </div>
           </div>
 
-          {/* Row 2: Mobile Controls (< 640px) */}
           <div className="flex sm:hidden items-center justify-between gap-2">
             <ViewToggle
               viewMode={viewMode}
-              onToggle={setViewMode}
+              onToggle={viewModeChangeHandler}
               variant="compact"
             />
             <div className="flex items-center gap-2">
               <DensityToggle
+                density={density}
                 onDensityChange={densityChangeHandler}
                 variant="compact"
               />
