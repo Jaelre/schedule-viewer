@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTelemetry } from '@/app/providers'
 
 type Theme = 'light' | 'dark'
 
@@ -18,6 +19,7 @@ function applyTheme(theme: Theme) {
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme | null>(null)
+  const { track } = useTelemetry()
 
   useEffect(() => {
     setTheme(getActiveTheme())
@@ -54,6 +56,7 @@ export function ThemeToggle() {
 
     applyTheme(nextTheme)
     setTheme(nextTheme)
+    track({ feature: 'theme_toggle', action: 'change_theme', value: nextTheme })
   }
 
   const isDark = theme === 'dark'

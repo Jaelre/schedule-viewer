@@ -29,7 +29,7 @@ Each browser event is enqueued as a flat first-party analytics object:
 ```
 
 - `feature` / `action` – The explicit in-site interaction being tracked.
-- `value` – Optional detail such as the selected month, density, or clicked doctor id.
+- `value` – Optional detail such as the selected month, density, active theme, or clicked doctor id.
 - `url` – Sanitized in-site path plus query string; never a full cross-site URL.
 - `referrer` – Previous in-site path when available; cross-site referrers are dropped.
 - `language`, `viewport`, `timezone` – Environment context useful for UX analysis.

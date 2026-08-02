@@ -52,6 +52,7 @@ Indexes: timestamp desc, feature+action, created_at desc, ym (partial), action, 
 - `schedule_app`: `page_view` (ym), `toggle_view` (next view mode), `open_legend` (ym), `retry_fetch` (ym)
 - `month_nav`: `change_month` (target ym)
 - `density_toggle`: `change_density` (density), `open_legend` (current density)
+- `theme_toggle`: `change_theme` (`light`/`dark`); emitted only for an explicit user toggle, not system-theme detection
 - `legend_modal`: `open` / `close` (count of codes)
 - `doctor_icon`: `click` (doctor id in `value`)
 - `password_gate`: `submit` (`filled`/`empty`), `submit_result` (`success`/`invalid`/`error`)
