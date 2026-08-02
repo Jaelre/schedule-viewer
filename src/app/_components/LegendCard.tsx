@@ -29,13 +29,13 @@ export function LegendCard({ codes, shiftNames }: LegendCardProps) {
   }
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
-      <h2 className="text-sm font-semibold mb-3 text-gray-900">Legenda Turni</h2>
+    <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
+      <h2 className="text-sm font-semibold mb-3 text-foreground">Legenda Turni</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
         {legend.map(({ code, label, colors }) => (
           <div
             key={code}
-            className="flex items-center gap-2 p-2 rounded-md border border-gray-200 bg-gray-50"
+            className="flex items-center gap-2 p-2 rounded-md border border-border bg-muted/50"
           >
             <div
               className="w-8 h-8 rounded flex items-center justify-center text-xs font-medium flex-shrink-0"
@@ -46,7 +46,7 @@ export function LegendCard({ codes, shiftNames }: LegendCardProps) {
             >
               {code}
             </div>
-            <span className="text-sm text-gray-900 truncate" title={label}>
+            <span className="text-sm text-foreground truncate" title={label}>
               {label}
             </span>
           </div>

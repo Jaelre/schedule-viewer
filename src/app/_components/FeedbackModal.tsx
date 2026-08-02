@@ -108,23 +108,23 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
       onClick={!isSubmitting ? onClose : undefined}
     >
       <div
-        className="bg-white border border-gray-300 rounded-lg p-6 shadow-xl max-w-md w-full mx-4"
+        className="bg-card text-card-foreground border border-border rounded-lg p-6 shadow-xl max-w-md w-full mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         {success ? (
           <div className="text-center py-8">
             <div className="text-green-600 text-5xl mb-4">✓</div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Grazie!</h2>
-            <p className="text-sm text-gray-600">Il tuo feedback è stato inviato con successo.</p>
+            <h2 className="text-lg font-semibold text-foreground mb-2">Grazie!</h2>
+            <p className="text-sm text-muted-foreground">Il tuo feedback è stato inviato con successo.</p>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Invia Feedback</h2>
+              <h2 className="text-lg font-semibold text-foreground">Invia Feedback</h2>
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 transition-colors text-gray-700 disabled:opacity-50"
+                className="px-3 py-1 text-sm border border-border rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
               >
                 Chiudi
               </button>
@@ -132,7 +132,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="feedback-text" className="text-sm font-medium text-gray-700">
+                <label htmlFor="feedback-text" className="text-sm font-medium text-foreground">
                   Il tuo feedback <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -149,18 +149,18 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                   autoFocus
                 />
                 <div className="flex justify-between items-center text-xs">
-                  <span className={isOverLimit ? 'text-red-600 font-medium' : 'text-gray-500'}>
+                  <span className={isOverLimit ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground'}>
                     {charCount} / 1000 caratteri
                   </span>
                   {isOverLimit && (
-                    <span className="text-red-600">Limite superato di {charCount - 1000}</span>
+                    <span className="text-red-600 dark:text-red-400">Limite superato di {charCount - 1000}</span>
                   )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="signature" className="text-sm font-medium text-gray-700">
-                  Nome o iniziali <span className="text-gray-400">(opzionale)</span>
+                <label htmlFor="signature" className="text-sm font-medium text-foreground">
+                  Nome o iniziali <span className="text-muted-foreground">(opzionale)</span>
                 </label>
                 <input
                   id="signature"
@@ -174,7 +174,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 text-sm">
+                <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-200 rounded-md p-3 text-sm">
                   {error}
                 </div>
               )}

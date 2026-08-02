@@ -2,6 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --background: 210 20% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 210 40% 94%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 221 83% 53%;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: 222 27% 10%;
+  --foreground: 210 40% 96%;
+  --card: 222 24% 13%;
+  --card-foreground: 210 40% 96%;
+  --primary: 217 91% 67%;
+  --primary-foreground: 222 47% 11%;
+  --secondary: 217 19% 20%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 217 19% 18%;
+  --muted-foreground: 215 20% 70%;
+  --accent: 217 19% 23%;
+  --accent-foreground: 210 40% 96%;
+  --destructive: 0 63% 45%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217 19% 24%;
+  --input: 217 19% 27%;
+  --ring: 217 91% 67%;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
 /* Sticky grid CSS */
 .schedule-grid-container {
   overflow: auto;
@@ -11,7 +60,11 @@
 .schedule-grid {
   display: grid;
   gap: 1px;
-  background: #e5e7eb;
+  background: hsl(var(--border));
+}
+
+.schedule-grid-static {
+  background: hsl(var(--border));
 }
 
 /* Fixed name column - absolutely positioned relative to scroll container */

@@ -90,10 +90,9 @@ export function VirtualizedGrid({
       >
         {/* Name Header */}
         <div
-          className={`sticky top-0 ${isExtraCompact ? 'p-1.5' : cellPadding} ${cellHeight} flex items-center font-semibold bg-white border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+          className={`sticky top-0 ${isExtraCompact ? 'p-1.5' : cellPadding} ${cellHeight} flex items-center font-semibold bg-gray-200 dark:bg-slate-800 border-b ${isExtraCompact ? '' : 'border-r border-border'}`}
           style={{
             zIndex: 30,
-            backgroundColor: '#e5e7eb',
           }}
         >
           Nome
@@ -113,7 +112,7 @@ export function VirtualizedGrid({
             return (
               <div
                 key={`name-${virtualRow.key}`}
-                className={`${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden border-b border-gray-300`}
+                className={`${cellPadding} ${cellHeight} flex w-full items-center gap-2 font-medium bg-card ${isExtraCompact ? '' : 'border-r border-border'} overflow-hidden border-b border-border`}
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -153,7 +152,7 @@ export function VirtualizedGrid({
         >
           {/* Header Row - Days Only */}
           <div
-            className="schedule-grid sticky top-0 bg-gray-200"
+            className="schedule-grid sticky top-0 bg-gray-200 dark:bg-slate-800"
             style={{
               zIndex: 10,
               gridTemplateColumns: `repeat(${daysInMonth}, minmax(2.25rem, 1fr))`,
@@ -169,8 +168,8 @@ export function VirtualizedGrid({
                 <div
                   key={`header-${day}`}
                   className={`${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
-                    isHoliday ? 'bg-red-50 text-red-900' : isWeekendDay ? 'bg-blue-50 text-blue-900' : 'bg-white'
-                  } border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+                    isHoliday ? 'bg-red-50 text-red-900 dark:bg-red-950/50 dark:text-red-200' : isWeekendDay ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-200' : 'bg-card'
+                  } border-b ${isExtraCompact ? '' : 'border-r border-border'}`}
                 >
                   {day}
                 </div>
@@ -193,7 +192,7 @@ export function VirtualizedGrid({
               return (
                 <div
                   key={virtualRow.key}
-                  className="schedule-grid border-b border-gray-300"
+                  className="schedule-grid border-b border-border"
                   style={{
                     position: 'absolute',
                     top: 0,

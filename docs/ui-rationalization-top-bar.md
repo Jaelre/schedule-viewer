@@ -7,6 +7,9 @@ The current `ScheduleApp` top bar acts as the command center for the application
 - **Configuration:** `DensityToggle` (Row height/font size).
 - **View Control:** View Mode (Shift-centric vs. Person-centric).
 - **Information/Feedback:** `LegendModal` trigger and `FeedbackButton`.
+- **Appearance:** A compact theme toggle that follows the operating-system preference until the user chooses a theme, then persists that choice locally.
+
+The appearance control stays in the right-side control group on desktop and beside Feedback in the primary mobile row. It does not add another row or change the schedule layout.
 
 ### Current Implementation Analysis
 The current layout uses a simple flexbox strategy that does not scale elegantly:

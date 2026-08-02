@@ -21,13 +21,13 @@ export function ShiftCell({ ym, day, codes, personId, densitySettings, isExtraCo
   const isWeekendDay = isWeekend(ym, day)
   const isHoliday = isItalianHoliday(ym, day)
 
-  let bgClass = 'bg-white'
-  if (isWeekendDay) bgClass = 'bg-blue-50'
-  if (isHoliday) bgClass = 'bg-red-50'
+  let bgClass = 'bg-card'
+  if (isWeekendDay) bgClass = 'bg-blue-50 dark:bg-blue-950/50'
+  if (isHoliday) bgClass = 'bg-red-50 dark:bg-red-950/50'
 
   return (
     <div
-      className={`grid-cell ${bgClass} ${cellPadding} ${cellHeight} flex items-center justify-center ${textSize} font-medium overflow-hidden ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+      className={`grid-cell ${bgClass} ${cellPadding} ${cellHeight} flex items-center justify-center ${textSize} font-medium overflow-hidden ${isExtraCompact ? '' : 'border-r border-border'}`}
     >
       {codes && codes.length > 0 ? (
         <div

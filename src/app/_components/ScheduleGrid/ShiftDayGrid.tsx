@@ -138,7 +138,7 @@ export function ShiftDayGrid({
 
   return (
     <div
-      className="h-full overflow-auto"
+      className="h-full overflow-auto bg-border"
       style={{
         display: 'grid',
         gridTemplateColumns: `minmax(10rem, 14rem) repeat(${daysInMonth}, minmax(5.5rem, 1fr))`,
@@ -147,10 +147,9 @@ export function ShiftDayGrid({
       }}
     >
       <div
-        className={`sticky top-0 left-0 z-30 ${density === 'extra-compact' ? 'p-1.5' : cellPadding} flex items-center font-semibold border-b border-r border-gray-300`}
+        className={`sticky top-0 left-0 z-30 bg-gray-200 dark:bg-slate-800 ${density === 'extra-compact' ? 'p-1.5' : cellPadding} flex items-center font-semibold border-b border-r border-border`}
         style={{
           minHeight: minRowHeight,
-          backgroundColor: '#e5e7eb', // Ensure background is always visible (gray-200)
         }}
       >
         Turno
@@ -159,15 +158,15 @@ export function ShiftDayGrid({
         const isWeekendDay = isWeekend(ym, day)
         const isHoliday = isItalianHoliday(ym, day)
         const bgClass = isHoliday
-          ? 'bg-red-50 text-red-900'
+          ? 'bg-red-50 text-red-900 dark:bg-red-950/50 dark:text-red-200'
           : isWeekendDay
-            ? 'bg-blue-50 text-blue-900'
-            : 'bg-gray-200'
+            ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-200'
+            : 'bg-gray-200 dark:bg-slate-800'
 
         return (
           <div
             key={`shift-header-${day}`}
-            className={`sticky top-0 z-20 ${cellPadding} flex items-center justify-center font-semibold border-b border-gray-300 ${bgClass}`}
+            className={`sticky top-0 z-20 ${cellPadding} flex items-center justify-center font-semibold border-b border-border ${bgClass}`}
             style={{
               minHeight: minRowHeight,
             }}
@@ -193,7 +192,7 @@ export function ShiftDayGrid({
             }}
           >
             <div
-              className={`sticky left-0 z-10 ${density === 'extra-compact' ? 'p-1.5' : cellPadding} border-r border-b border-gray-300 flex flex-col justify-center`}
+              className={`sticky left-0 z-10 ${density === 'extra-compact' ? 'p-1.5' : cellPadding} border-r border-b border-border flex flex-col justify-center`}
               style={{
                 minHeight: minRowHeight,
                 backgroundColor: shiftColor.background,
@@ -221,7 +220,7 @@ export function ShiftDayGrid({
               return (
                 <div
                   key={`shift-${code}-${day}`}
-                  className={`${cellPadding} border-b border-gray-300 flex flex-col items-start justify-start gap-1`}
+                  className={`${cellPadding} border-b border-border flex flex-col items-start justify-start gap-1`}
                   style={{
                     minHeight: minRowHeight,
                     backgroundColor: shiftColor.background,

@@ -15,6 +15,7 @@ import { useTelemetry } from '@/app/providers'
 
 import { ViewToggle } from './ViewToggle'
 import { LegendButton } from './LegendButton'
+import { ThemeToggle } from './ThemeToggle'
 
 interface ScheduleAppProps {
   basePath?: string
@@ -71,7 +72,7 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
     <div className="min-h-screen bg-background">
       <div className="max-w-full space-y-2">
         {configError && (
-          <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-md p-4">
+          <div className="mx-4 mt-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-200 rounded-md p-4">
             <p className="text-sm font-semibold">Configurazione parziale</p>
             <p className="text-sm mt-1">
               {configError} La UI legge la configurazione runtime dal Worker/R2; verifica che i file in <code>src/config</code> siano stati sincronizzati correttamente.
@@ -100,11 +101,13 @@ export function ScheduleApp({ basePath = '/' }: ScheduleAppProps) {
               />
               <LegendButton onClick={handleLegendOpen} variant="full" />
               <FeedbackButton />
+              <ThemeToggle />
             </div>
 
             {/* Mobile Feedback (< 640px) */}
-            <div className="sm:hidden">
+            <div className="flex items-center gap-2 sm:hidden">
               <FeedbackButton />
+              <ThemeToggle />
             </div>
           </div>
 

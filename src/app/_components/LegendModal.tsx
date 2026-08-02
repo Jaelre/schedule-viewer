@@ -59,14 +59,14 @@ export function LegendModal({ codes, shiftNames, isOpen, onClose }: LegendModalP
       onClick={onClose}
     >
       <div
-        className="bg-white border border-gray-300 rounded-lg p-6 shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-auto"
+        className="bg-card text-card-foreground border border-border rounded-lg p-6 shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Legenda Turni</h2>
+          <h2 className="text-lg font-semibold text-foreground">Legenda Turni</h2>
           <button
             onClick={onClose}
-            className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 transition-colors text-gray-700"
+            className="px-3 py-1 text-sm border border-border rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
             aria-label="Chiudi legenda"
           >
             Chiudi
@@ -74,13 +74,13 @@ export function LegendModal({ codes, shiftNames, isOpen, onClose }: LegendModalP
         </div>
 
         {legend.length === 0 ? (
-          <p className="text-gray-600 text-center py-4">Nessun turno disponibile</p>
+          <p className="text-muted-foreground text-center py-4">Nessun turno disponibile</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {legend.map(({ code, label, colors }) => (
               <div
                 key={code}
-                className="flex items-center gap-3 p-3 rounded border border-gray-200 bg-gray-50"
+                className="flex items-center gap-3 p-3 rounded border border-border bg-muted/50"
               >
                 <div
                   className="w-12 h-12 rounded flex items-center justify-center text-sm font-medium flex-shrink-0"
@@ -91,7 +91,7 @@ export function LegendModal({ codes, shiftNames, isOpen, onClose }: LegendModalP
                 >
                   {code}
                 </div>
-                <span className="text-sm text-gray-900 flex-1" title={label}>
+                <span className="text-sm text-foreground flex-1" title={label}>
                   {label}
                 </span>
               </div>

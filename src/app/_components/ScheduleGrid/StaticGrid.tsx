@@ -73,10 +73,7 @@ export function StaticGrid({
     >
       {/* Header Row */}
       <div
-        className={`sticky top-0 left-0 z-30 ${isExtraCompact ? 'p-1.5' : cellPadding} ${cellHeight} flex items-center font-semibold border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
-        style={{
-          backgroundColor: '#e5e7eb',
-        }}
+        className={`sticky top-0 left-0 z-30 bg-gray-200 dark:bg-slate-800 ${isExtraCompact ? 'p-1.5' : cellPadding} ${cellHeight} flex items-center font-semibold border-b ${isExtraCompact ? '' : 'border-r border-border'}`}
       >
         Nome
       </div>
@@ -89,8 +86,8 @@ export function StaticGrid({
           <div
             key={`header-${day}`}
             className={`sticky top-0 z-20 ${cellPadding} ${cellHeight} flex items-center justify-center font-semibold ${textSize} ${
-              isHoliday ? 'bg-red-50 text-red-900' : isWeekendDay ? 'bg-blue-50 text-blue-900' : 'bg-gray-200'
-            } border-b ${isExtraCompact ? '' : 'border-r border-gray-300'}`}
+              isHoliday ? 'bg-red-50 text-red-900 dark:bg-red-950/50 dark:text-red-200' : isWeekendDay ? 'bg-blue-50 text-blue-900 dark:bg-blue-950/50 dark:text-blue-200' : 'bg-gray-200 dark:bg-slate-800'
+            } border-b ${isExtraCompact ? '' : 'border-r border-border'}`}
           >
             {day}
           </div>
@@ -105,7 +102,7 @@ export function StaticGrid({
           <React.Fragment key={`row-${person.id}`}>
             {/* Name Cell - Sticky Left */}
             <div
-              className={`sticky left-0 z-10 ${cellPadding} ${cellHeight} flex items-center gap-2 font-medium bg-white ${isExtraCompact ? '' : 'border-r border-gray-300'} overflow-hidden border-b border-gray-300`}
+              className={`sticky left-0 z-10 ${cellPadding} ${cellHeight} flex items-center gap-2 font-medium bg-card ${isExtraCompact ? '' : 'border-r border-border'} overflow-hidden border-b border-border`}
               title={person.displayName}
             >
               <NameCellContent
