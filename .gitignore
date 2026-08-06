@@ -79,6 +79,10 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Local analytical extracts
+*.duckdb
+*.duckdb.wal
+
 # Local AI tooling artifacts
 .claude/
 .wrangler/
