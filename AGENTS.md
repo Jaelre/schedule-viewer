@@ -1,37 +1,51 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-- `src/app` hosts the Next.js App Router; `_components/` contains composable UI, and `api/` wraps server routes.
-- `src/lib` centralizes data fetching, auth helpers, and JSON lookup tables (`doctor-names.json`, `shift-colors.json`).
-- `public/` serves static assets; `docs/` and `claudedocs/` hold product notes and generated references—update them with behavior changes.
-- `worker/` encapsulates the Cloudflare Worker (Rust + `wrangler`) with sources in `worker/src` and build outputs in `worker/build`.
+## Project
 
-## Build, Test, and Development Commands
-- `npm install` – sync JavaScript dependencies after cloning or editing `package.json`.
-- `npm run dev` – launch the local app with hot reload on `http://localhost:3000`.
-- `npm run build` – compile the production bundle; run this before tagging a release.
-- `npm run lint` – execute ESLint/TypeScript checks; resolve warnings rather than suppressing them.
-- `npx wrangler dev --config worker/wrangler.toml` – emulate the Worker (requires `cargo` and an `API_TOKEN` secret).
+Schedule Viewer is a read-only Next.js monthly schedule UI backed by a Rust
+Cloudflare Worker. The Worker keeps `API_TOKEN` private, fetches MetricAid data,
+loads configuration from R2, and returns the normalized schedule used by the UI.
 
-## Coding Style & Naming Conventions
-- Use TypeScript, React hooks, and function components; prefer named exports for shared utilities.
-- Follow the repository default formatting (Prettier-style 2-space indent, single quotes, trailing commas) and rely on ESLint autofix.
-- Components use PascalCase (`ScheduleGrid`), hooks/utilities use camelCase (`useMonthShifts`), config files stay kebab-case.
-- Compose styling with Tailwind classes in JSX; reserve `globals.css` for design tokens or resets.
+- `src/app/` — Next.js App Router and page components
+- `src/lib/` — API, auth, date, color, and configuration helpers
+- `src/config/` — runtime configuration uploaded to R2
+- `worker/src/` — Rust Worker implementation
+- `public/`, `docs/`, `claudedocs/` — static assets and documentation
 
-## Testing Guidelines
-- Automated tests are not yet configured; add coverage alongside features via co-located `*.test.tsx` or a `src/__tests__` folder.
-- Adopt React Testing Library with Vitest or Jest, then expose a `npm test` script so CI can run it.
-- Until then, document manual QA steps in PR descriptions and prioritize regression tests when fixing bugs.
+## Commands
 
-## Commit & Pull Request Guidelines
-- Write imperative, present-tense commit subjects (e.g., `fix: guard invalid month param`), mirroring the existing Conventional-style prefixes.
-- Squash unrelated work; reserve `chore:` for repo maintenance only.
-- PRs should include a one-paragraph summary, linked issues, before/after visuals for UI changes, and lint/test output.
+```bash
+npm install
+npm run dev
+npm run lint
+npm run build
+npx wrangler dev --config worker/wrangler.toml
+```
 
-## Security & Configuration Tips
-- Runtime config source files live in `src/config/` and are uploaded to R2 via `./scripts/upload-config-to-r2.sh`.
-- Sensitive config in `src/config/` is tracked with `git-crypt`; do not move it back to `public/config/`.
-- Pages preview builds currently bind to the same Worker service as production unless a separate preview Worker is explicitly configured in the root `wrangler.toml`.
-- Manage Worker secrets with `wrangler secret put API_TOKEN`; never hardcode keys in TypeScript or Rust.
-- Review `worker/wrangler.toml` before deploying to confirm API endpoints, cache TTLs, and build commands remain correct.
+Run `npm run lint` and `npm run build` for changes affecting the app. Add
+co-located tests when a test setup is introduced; until then, document manual
+QA for behavior changes.
+
+## Conventions
+
+- Use TypeScript, React function components, and named exports for shared code.
+- Use 2-space indentation, single quotes, trailing commas, and Tailwind classes.
+- Name components in PascalCase and hooks/utilities in camelCase.
+- Prefer explicit error propagation and diagnosable failures; do not silently
+  swallow errors or add implicit fallback behavior.
+- Keep changes focused. Update relevant documentation when behavior changes.
+
+## Configuration and secrets
+
+- Never commit API keys or expose `API_TOKEN` to the browser. Manage it with
+  `wrangler secret put API_TOKEN`.
+- Keep sensitive files in `src/config/`; upload them with
+  `./scripts/upload-config-to-r2.sh` rather than moving them to `public/`.
+- Review the applicable `wrangler.toml` before deploying, especially API URLs,
+  cache settings, and preview/production bindings.
+
+## Git
+
+Use imperative Conventional Commit subjects such as `fix: guard invalid month
+param`. Keep unrelated work separate. PRs should include a summary, relevant
+visuals for UI changes, and lint/build or test results.
