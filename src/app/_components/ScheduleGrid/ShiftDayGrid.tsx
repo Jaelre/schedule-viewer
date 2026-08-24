@@ -2,7 +2,9 @@
 
 import { useMemo } from 'react'
 import { isWeekend, isItalianHoliday } from '@/lib/date'
+import type { ShiftDisplayConfig } from '@/lib/config/types'
 import { resolveShiftLabel } from '@/lib/shift-labels'
+import { getShiftDisplayCode } from '@/lib/shift-format'
 import type { MonthShifts } from '@/lib/types'
 import type { Density, DensitySettings, PersonWithDisplay } from './types'
 import { getNameAbbreviation } from './utils'
@@ -23,7 +25,8 @@ type ShiftAssignments = Record<string, Record<number, PersonWithDisplay[]>>
 
 function buildShiftAssignments(
   rows: (string[] | null)[][],
-  peopleWithNames: PersonWithDisplay[]
+  peopleWithNames: PersonWithDisplay[],
+  shiftDisplayConfig: ShiftDisplayConfig,
 ): ShiftAssignments {
   const assignments: ShiftAssignments = {}
 
@@ -36,17 +39,19 @@ function buildShiftAssignments(
       const day = index + 1
 
       cell.forEach((code) => {
-        if (!assignments[code]) {
-          assignments[code] = {}
+        const displayCode = getShiftDisplayCode(code, shiftDisplayConfig)
+
+        if (!assignments[displayCode]) {
+          assignments[displayCode] = {}
         }
 
-        if (!assignments[code][day]) {
-          assignments[code][day] = []
+        if (!assignments[displayCode][day]) {
+          assignments[displayCode][day] = []
         }
 
         // Only add person if not already in the array for this code/day
-        if (!assignments[code][day].some((p) => p.id === person.id)) {
-          assignments[code][day].push(person)
+        if (!assignments[displayCode][day].some((p) => p.id === person.id)) {
+          assignments[displayCode][day].push(person)
         }
       })
     })
@@ -66,15 +71,17 @@ function buildShiftAssignments(
 
 function getShiftOrder(
   codes: string[],
-  rows: (string[] | null)[][]
+  rows: (string[] | null)[][],
+  shiftDisplayConfig: ShiftDisplayConfig,
 ): string[] {
   const seen = new Set<string>()
   const order: string[] = []
 
   for (const code of codes) {
-    if (!seen.has(code)) {
-      seen.add(code)
-      order.push(code)
+    const displayCode = getShiftDisplayCode(code, shiftDisplayConfig)
+    if (!seen.has(displayCode)) {
+      seen.add(displayCode)
+      order.push(displayCode)
     }
   }
 
@@ -82,9 +89,10 @@ function getShiftOrder(
     for (const cell of personRow) {
       if (!cell) continue
       for (const code of cell) {
-        if (!seen.has(code)) {
-          seen.add(code)
-          order.push(code)
+        const displayCode = getShiftDisplayCode(code, shiftDisplayConfig)
+        if (!seen.has(displayCode)) {
+          seen.add(displayCode)
+          order.push(displayCode)
         }
       }
     }
@@ -125,13 +133,13 @@ export function ShiftDayGrid({
   )
 
   const shiftAssignments = useMemo(
-    () => buildShiftAssignments(rows, peopleWithNames),
-    [rows, peopleWithNames]
+    () => buildShiftAssignments(rows, peopleWithNames, config.shiftDisplay),
+    [rows, peopleWithNames, config.shiftDisplay]
   )
 
   const shiftOrder = useMemo(
-    () => getShiftOrder(codes, rows),
-    [codes, rows]
+    () => getShiftOrder(codes, rows, config.shiftDisplay),
+    [codes, rows, config.shiftDisplay]
   )
 
   const minRowHeight = useMemo(() => `${rowHeight}px`, [rowHeight])
